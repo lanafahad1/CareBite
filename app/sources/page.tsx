@@ -55,7 +55,7 @@ export default function SourcesPage() {
               <li>The other dishes are synthetic recipes written for this project. The SFCT does not cover them, so they have no nutrient values. Nothing is estimated.</li>
               <li>Carbohydrate limits use the SFCT “Total Carbohydrates” value (which includes dietary fibre); available carbohydrate is shown alongside.</li>
               <li>Portion weights and the ingredient grams derived from SFCT recipes are demonstration kitchen values, not SFDA data.</li>
-              <li>Every table was checked for internal consistency (energy against protein, fat, carbohydrate and fibre; kJ against kcal; total against available carbohydrate). {flagged.length} of {SFCT_META.dishes} published tables fail it{example ? `, for example ${example}` : ''}. They are kept exactly as published, marked in the library, and cannot be linked to a hospital dish until the project team confirms the values with SFDA: {flagged.map(([, e]) => e.name).join(', ')}.</li>
+              <li>Every table was checked for internal consistency (energy against protein, fat, carbohydrate and fibre; kJ against kcal; total against available carbohydrate). {flagged.length} of {SFCT_META.dishes} published tables fail it{example ? `, for example ${example}` : ''}. They are kept exactly as published, marked in the library, and cannot be linked to a hospital dish until the values are confirmed with SFDA: {flagged.map(([, e]) => e.name).join(', ')}.</li>
             </ul>
             <p><ExtLink href={SFCT_META.news}>SFDA announcement</ExtLink> · <ExtLink href={SFCT_META.url}>English PDF</ExtLink> · <ExtLink href={SFCT_META.urlAr}>Arabic PDF</ExtLink> · The full library can be browsed in Menu Management (staff).</p>
           </Section>
