@@ -12,12 +12,12 @@ import { ROLES, ACCOUNT_STATUS, label } from '@/domain/constants.js';
 export type Role = 'admin' | 'staff' | 'patient';
 export type Actor = {
   id: string; role: Role | null; status: string; name: string; username: string; email: string;
-  patientId: string | null; isDemo: boolean; requestedRole: string | null; decisionNote: string | null; createdAt: string;
+  patientId: string | null; isDemo: boolean; requestedRole: string | null; decisionNote: string | null; createdAt: string; emailVerified: boolean;
 };
 /** What the browser may know about the signed-in user (no tokens, no internal fields). */
 export type Viewer = {
   name: string; username: string; email: string; role: Role | null; roleLabel: string; status: string; statusLabel: string;
-  requestedRole: string | null; decisionNote: string | null; patientId: string | null; patientDemoId: string | null; isDemo: boolean; permissions: string[];
+  requestedRole: string | null; decisionNote: string | null; patientId: string | null; patientDemoId: string | null; isDemo: boolean; permissions: string[]; emailVerified: boolean;
 };
 
 type SessionUser = Record<string, unknown> & { id: string; name: string; email: string; createdAt: Date | string };
@@ -26,7 +26,7 @@ function toActor(u: SessionUser): Actor {
   return {
     id: String(u.id), role: (u.role as Role) ?? null, status: String(u.status ?? 'pending'), name: u.name, username: String(u.displayUsername ?? u.username ?? ''),
     email: u.email, patientId: u.patientId ? String(u.patientId) : null, isDemo: Boolean(u.isDemo), requestedRole: (u.requestedRole as string) ?? null,
-    decisionNote: (u.decisionNote as string) ?? null, createdAt: new Date(u.createdAt).toISOString(),
+    decisionNote: (u.decisionNote as string) ?? null, createdAt: new Date(u.createdAt).toISOString(), emailVerified: Boolean(u.emailVerified),
   };
 }
 
@@ -47,7 +47,7 @@ export async function toViewer(actor: Actor): Promise<Viewer> {
     name: actor.name, username: actor.username, email: actor.email, role: actor.role,
     roleLabel: actor.role ? label(ROLES, actor.role) : 'Access requested', status: actor.status, statusLabel: label(ACCOUNT_STATUS, actor.status),
     requestedRole: actor.requestedRole, decisionNote: actor.decisionNote, patientId: demoId ? actor.patientId : null, patientDemoId: demoId,
-    isDemo: actor.isDemo, permissions: active ? permissionsFor(actor.role) : [],
+    isDemo: actor.isDemo, permissions: active ? permissionsFor(actor.role) : [], emailVerified: actor.emailVerified,
   };
 }
 

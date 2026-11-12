@@ -1,5 +1,6 @@
 'use client';
 import * as React from 'react';
+import Link from 'next/link';
 import { authClient, authErrorMessage } from '@/lib/auth-client';
 import { Field } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
@@ -65,7 +66,10 @@ export function LoginForm({ next }: { next: string | null }) {
           autoComplete="current-password" maxLength={128} required
         />
       </Field>
-      <ShowPassword id="login-show" checked={show} onChange={setShow} />
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <ShowPassword id="login-show" checked={show} onChange={setShow} />
+        <Link href="/forgot-password" className="inline-flex min-h-11 items-center text-sm">Forgot password?</Link>
+      </div>
       <FormError message={formError} />
       <SubmitButton pending={pending} pendingLabel="Logging in…" size="lg" className="w-full">Log in</SubmitButton>
     </form>

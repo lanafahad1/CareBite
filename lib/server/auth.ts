@@ -20,6 +20,7 @@ import { username } from 'better-auth/plugins';
 import { nextCookies } from 'better-auth/next-js';
 import type { Pool } from 'pg';
 import { passwordProblem, USERNAME_RE } from '@/lib/password-policy';
+import { sendAccountEmail } from './email';
 
 type Domain = {
   claimLinkCode: (code: string) => Promise<{ id: string | number; demoId: string }>;
@@ -48,8 +49,26 @@ export function authOptions(db: Pool, domain: Domain) {
       minPasswordLength: 8,
       maxPasswordLength: 128,
       autoSignIn: true,
-      requireEmailVerification: false, // no email service in this prototype
+      // Email confirmation is a reminder only: people can use CareBite before confirming.
+      requireEmailVerification: false,
       revokeSessionsOnPasswordReset: true,
+      resetPasswordTokenExpiresIn: 60 * 60, // 1 hour, single use
+      // "Forgot password?": the link goes by email (Gmail, see lib/server/email.ts). Shared demo accounts are never reset.
+      sendResetPassword: async ({ user, url }, request) => {
+        if ((user as { isDemo?: boolean }).isDemo) return;
+        await sendAccountEmail('reset', user.email, url, { name: user.name, username: String((user as { displayUsername?: string; username?: string }).displayUsername ?? (user as { username?: string }).username ?? '') }, request);
+      },
+    },
+    emailVerification: {
+      sendOnSignUp: true, // every new account gets the "confirm your email" message
+      autoSignInAfterVerification: true,
+      expiresIn: 60 * 60,
+      sendVerificationEmail: async ({ user, url }, request) => {
+        if ((user as { isDemo?: boolean }).isDemo) return;
+        const link = new URL(url);
+        link.searchParams.set('callbackURL', '/email-verified');
+        await sendAccountEmail('verify', user.email, link.toString(), { name: user.name }, request);
+      },
     },
     session: {
       expiresIn: 60 * 60 * 8, // 8 hours
@@ -90,6 +109,9 @@ export function authOptions(db: Pool, domain: Domain) {
         '/sign-up/email': { window: 300, max: 5 },
         '/change-password': { window: 300, max: 5 },
         '/delete-user': { window: 300, max: 5 },
+        '/request-password-reset': { window: 300, max: 3 },
+        '/send-verification-email': { window: 300, max: 3 },
+        '/reset-password': { window: 300, max: 5 },
       },
     },
     advanced: {
@@ -121,6 +143,10 @@ export function authOptions(db: Pool, domain: Domain) {
           } else {
             fieldError('accountType', 'Choose a patient or staff account.');
           }
+        }
+        if (ctx.path === '/reset-password') {
+          const pw = passwordProblem(String(body.newPassword ?? ''), {});
+          if (pw) fieldError('newPassword', pw);
         }
         if (ctx.path === '/change-password') {
           const session = await getSessionFromCtx(ctx);

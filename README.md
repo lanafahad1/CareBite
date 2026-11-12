@@ -92,6 +92,10 @@ On first start the tables are created in that database and seeded with:
 | `npm run typecheck` | TypeScript check. |
 | `npm run reset-db -- --yes` | Delete every CareBite table in the `DATABASE_URL` database; the next start creates and seeds them again. To reset only the demonstration hospital, sign in as `admin.demo` and use the reset in Settings. |
 
+### Account emails (optional)
+
+New accounts get an email to confirm their address (a reminder only: the account works right away), and **Forgot password?** on the log-in page sends a reset link that works once, for 1 hour. Emails are sent through Gmail with an app password: set `GMAIL_USER`, `GMAIL_APP_PASSWORD` and optionally `EMAIL_FROM_NAME` (see `.env.example`). Without them nothing is sent, and in development the link is printed in the server log. Demo accounts never receive email.
+
 ### Demo accounts (demonstration access only)
 
 All demo accounts use the password `CareBite#2026`, and the login page has one-click buttons. **No identity is verified**: these are shared demonstration accounts, not real credentials.

@@ -21,6 +21,7 @@ export default function PrivacyPage() {
           <h2>What is stored, and why</h2>
           <ul>
             <li><b>Accounts:</b> username, email, display name, role and a hashed password.</li>
+            <li><b>Account emails:</b> your email is used only to confirm it and to send a password-reset link when you ask for one. CareBite sends no newsletters or marketing, and never asks for your password by email.</li>
             <li><b>Patient nutrition profile:</b> a demonstration identifier (CB-####), ward and bed, age range, relevant conditions, the prescribed diet order, allergies and intolerances (recorded separately), medically required exclusions, food preferences and appetite. Used only to screen, rank and prepare meals.</li>
             <li><b>Meals and feedback:</b> offered options, selections and confirmations, appetite before meals, intake, reasons, satisfaction, weighed plate waste and requests to the nutrition team.</li>
             <li><b>Audit log:</b> who changed a patient’s record or meals, and when.</li>

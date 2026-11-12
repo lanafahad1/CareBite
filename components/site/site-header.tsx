@@ -1,6 +1,8 @@
 import { Logo } from './logo';
 import { MainNav } from './main-nav';
 import { getViewer, homeFor } from '@/lib/server/session';
+import { emailConfigured } from '@/lib/server/email';
+import { VerifyEmailBanner } from '@/components/auth/verify-banner';
 import { PUBLIC_NAV, STAFF_NAV, PATIENT_NAV } from '@/lib/site';
 
 /** Server-rendered header: navigation comes from the session role and its RBAC permissions. */
@@ -22,6 +24,7 @@ export async function SiteHeader() {
         logo={<Logo href={home} />}
         viewer={viewer ? { name: viewer.name, username: viewer.username, roleLabel: viewer.roleLabel, role: viewer.role, patientDemoId: viewer.patientDemoId, isDemo: viewer.isDemo } : null}
       />
+      {active && viewer && !viewer.emailVerified && !viewer.isDemo && emailConfigured() ? <VerifyEmailBanner email={viewer.email} /> : null}
     </header>
   );
 }
