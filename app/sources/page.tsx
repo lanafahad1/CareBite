@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
 import { publicMetadata } from '@/components/public/seo';
-import { SITE_URL, TEAM } from '@/lib/site';
+import { SITE_URL, DEVELOPER } from '@/lib/site';
 import { AboutNav } from '@/components/cb/misc';
 import { PageHead } from '@/components/site/page-head';
 import { ExtLink } from '@/components/public/blocks';
@@ -35,7 +35,7 @@ export default function SourcesPage() {
   const ld = {
     '@context': 'https://schema.org', '@type': 'WebPage', name: 'Data Sources & Limitations', url: `${SITE_URL}/sources`, description: DESCRIPTION,
     citation: sources.filter(([, x]) => x.url).map(([, x]) => ({ '@type': 'CreativeWork', name: x.title, url: x.url, publisher: { '@type': 'Organization', name: x.publisher } })),
-    author: TEAM.map((name) => ({ '@type': 'Person', name })),
+    author: [{ '@type': 'Person', name: DEVELOPER.en }],
   };
 
   return (
@@ -52,7 +52,7 @@ export default function SourcesPage() {
             <ul>
               <li>A hospital dish is linked to an SFCT entry only when the kitchen prepares it to that standard recipe. {SFCT_HOSPITAL_DISHES.length} demonstration dishes are linked: {SFCT_HOSPITAL_DISHES.map((d: any) => `${d.name} (${library[d.nutrition.sfctId].region}, p. ${library[d.nutrition.sfctId].tablePage})`).join('; ')}.</li>
               <li>Per-portion values = SFCT value per 100 g × the hospital’s standard portion weight. A complete meal adds its components; if any component has no SFCT entry, totals are shown as partial (“≥”) and are never used for a limit.</li>
-              <li>The other dishes are the project team’s synthetic recipes. The SFCT does not cover them, so they have no nutrient values. Nothing is estimated.</li>
+              <li>The other dishes are synthetic recipes written for this project. The SFCT does not cover them, so they have no nutrient values. Nothing is estimated.</li>
               <li>Carbohydrate limits use the SFCT “Total Carbohydrates” value (which includes dietary fibre); available carbohydrate is shown alongside.</li>
               <li>Portion weights and the ingredient grams derived from SFCT recipes are demonstration kitchen values, not SFDA data.</li>
               <li>Every table was checked for internal consistency (energy against protein, fat, carbohydrate and fibre; kJ against kcal; total against available carbohydrate). {flagged.length} of {SFCT_META.dishes} published tables fail it{example ? `, for example ${example}` : ''}. They are kept exactly as published, marked in the library, and cannot be linked to a hospital dish until the project team confirms the values with SFDA: {flagged.map(([, e]) => e.name).join(', ')}.</li>

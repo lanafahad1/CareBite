@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import { User, List, BookOpen, Target, ThumbsUp, Leaf, Lock, Shield, Database } from 'lucide-react';
 import { publicMetadata } from '@/components/public/seo';
-import { TEAM, SITE_URL, SITE_NAME } from '@/lib/site';
+import { DEVELOPER, SITE_URL, SITE_NAME } from '@/lib/site';
 import { botanical, teamPortrait } from '@/lib/art.js';
 import { AboutNav } from '@/components/cb/misc';
 import { Notice } from '@/components/ui/notice';
@@ -105,17 +105,15 @@ export default function AboutPage() {
 
       <Band tone="white" aria-labelledby="team-h">
         <div className="container-page">
-          <SectionHead center eyebrow="Meet Our Development Team" title="Designed with Care. Built for Better Nutrition." id="team-h">
+          <SectionHead center eyebrow="Meet the developer" title="Designed with Care. Built for Better Nutrition." id="team-h">
             <p>CareBite is a Health Informatics project developed to demonstrate how patient health information and nutritional data can support personalized meal recommendations and informed dietary decisions.</p>
           </SectionHead>
-          <ul className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
-            {TEAM.map((name, i) => (
-              <li key={name} className={`relative flex flex-col items-center gap-3 overflow-hidden rounded-xl border border-border bg-card px-3 pb-5 pt-6 text-center sm:px-5 sm:pb-6 sm:pt-7 after:pointer-events-none after:absolute after:inset-x-[-30%] after:bottom-[-55%] after:h-[70%] after:opacity-70 after:content-[''] ${i % 2 ? 'after:bg-[radial-gradient(closest-side,var(--cb-mint),transparent)]' : 'after:bg-[radial-gradient(closest-side,var(--cb-rose),transparent)]'}`}>
-                <span className="relative z-10 size-20 sm:size-28 [&>svg]:h-full [&>svg]:w-full" dangerouslySetInnerHTML={{ __html: teamPortrait(initials(name), i) }} />
-                <h3 className="relative z-10 text-[1rem] font-medium sm:text-[1.1rem]">{name}</h3>
-              </li>
-            ))}
-          </ul>
+          <div className="relative mx-auto flex max-w-sm flex-col items-center gap-3 overflow-hidden rounded-xl border border-border bg-card px-5 pb-6 pt-7 text-center after:pointer-events-none after:absolute after:inset-x-[-30%] after:bottom-[-55%] after:h-[70%] after:bg-[radial-gradient(closest-side,var(--cb-rose),transparent)] after:opacity-70 after:content-['']">
+            <span className="relative z-10 size-28 [&>svg]:h-full [&>svg]:w-full" dangerouslySetInnerHTML={{ __html: teamPortrait(initials(DEVELOPER.en), 0) }} />
+            <h3 className="relative z-10 text-[1.15rem] font-medium">{DEVELOPER.en}</h3>
+            <p className="relative z-10 text-[1.05rem] text-heading" lang="ar" dir="rtl">{DEVELOPER.ar}</p>
+            <p className="relative z-10 text-sm text-muted-foreground">Website developer</p>
+          </div>
           <p className="mt-7 text-center text-muted-foreground">Developed as a university Health Informatics project focused on personalized nutrition and patient-centered decision support.</p>
           <Panel className="mx-auto mt-6 max-w-3xl">
             <h3 className="text-lg">Cite this project</h3>

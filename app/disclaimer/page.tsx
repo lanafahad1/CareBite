@@ -16,7 +16,7 @@ export default function DisclaimerPage() {
           <h2>What this means in practice</h2>
           <ul>
             <li>CareBite does not diagnose conditions, prescribe diets or recommend treatment. Admins define and review every diet order; CareBite supports their decisions.</li>
-            <li>Screening rules were checked against cited Saudi government guidance by the project team. They have not been clinically validated; a hospital dietetics department would need to review and approve them before real use.</li>
+            <li>Screening rules were checked against cited Saudi government guidance by the developer. They have not been clinically validated; a hospital dietetics department would need to review and approve them before real use.</li>
             <li>Nutrition values come only from SFDA laboratory analysis of traditional dishes, where imported; the hospital’s own preparation may differ. Where no values are imported, none are shown or estimated.</li>
             <li>CareBite never labels a meal “allergy-safe”. The kitchen checks packaged ingredient labels.</li>
             <li>Dashboard figures are indicators from recorded meals. They do not show cause and effect.</li>

@@ -72,7 +72,7 @@ The JSON API is `app/api/[...path]/route.ts` → `lib/server/api-handler.ts` (CS
   `FormErrors`/`FieldError`/`scrollToFirstError`.
 - `components/site`: `PageHead`, `PageBody`. Header/footer are global (in `app/layout.tsx`).
 - `lib/format.ts` (`formatDate`, `formatLongDate`, `formatDateTime`, `timeAgo`, `plural`, `isoDate`),
-  `lib/site.ts` (`TEAM`, `DISCLAIMER`, `CITATION`, nav), `lib/art.js` (`heroArt`, `botanical`, `teamPortrait`).
+  `lib/site.ts` (`DEVELOPER`, `CONTACT_EMAIL`, `DISCLAIMER`, `CITATION`, nav), `lib/art.js` (`heroArt`, `botanical`, `teamPortrait`).
 - Icons: `lucide-react` (always `aria-hidden` on decorative icons).
 
 ## Design and accessibility rules (from the project brief — keep them)

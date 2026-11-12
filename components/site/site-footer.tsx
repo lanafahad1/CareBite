@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { Logo } from './logo';
-import { DISCLAIMER, TEAM } from '@/lib/site';
+import { DISCLAIMER, DEVELOPER } from '@/lib/site';
 
 const COLS: [string, [string, string][]][] = [
   ['Explore', [['/how-it-works', 'How It Works'], ['/menu', 'Hospital Meal Menu'], ['/login', 'Try the demonstration']]],
@@ -28,7 +28,7 @@ export function SiteFooter() {
       </div>
       <div className="container-page flex flex-col gap-1 border-t border-rose pt-5 text-sm text-muted-foreground">
         <span>© {new Date().getFullYear()} CareBite · A university Health Informatics project · Fictional hospital and synthetic data only</span>
-        <span>Project Development Team: <b className="font-semibold text-heading">{TEAM.join(' · ')}</b></span>
+        <span>Website developed by <b className="font-semibold text-heading">{DEVELOPER.en}</b> · <span lang="ar" dir="rtl">{DEVELOPER.ar}</span></span>
       </div>
     </footer>
   );

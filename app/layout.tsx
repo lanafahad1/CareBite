@@ -5,7 +5,7 @@ import './globals.css';
 import { SiteHeader } from '@/components/site/site-header';
 import { SiteFooter } from '@/components/site/site-footer';
 import { Providers } from '@/components/site/providers';
-import { SITE_NAME, SITE_URL, SITE_DESCRIPTION, TEAM } from '@/lib/site';
+import { SITE_NAME, SITE_URL, SITE_DESCRIPTION, DEVELOPER } from '@/lib/site';
 import { jsonLd } from '@/lib/seo';
 
 const poppins = localFont({
@@ -33,7 +33,8 @@ export const metadata: Metadata = {
   title: { default: `${SITE_NAME}: Personalized Hospital Meals`, template: `%s · ${SITE_NAME}` },
   description: SITE_DESCRIPTION,
   applicationName: SITE_NAME,
-  authors: TEAM.map((name) => ({ name })),
+  authors: [{ name: DEVELOPER.en }],
+  creator: DEVELOPER.en,
   keywords: ['hospital nutrition', 'clinical nutrition', 'diet order', 'food allergies', 'patient meals', 'Saudi Arabia', 'SFDA', 'Health Informatics'],
   openGraph: { type: 'website', siteName: SITE_NAME, title: `${SITE_NAME}: Personalized Hospital Meals`, description: SITE_DESCRIPTION, url: SITE_URL, locale: 'en_US' },
   twitter: { card: 'summary_large_image', title: `${SITE_NAME}: Personalized Hospital Meals`, description: SITE_DESCRIPTION },
@@ -54,7 +55,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
     '@context': 'https://schema.org',
     '@graph': [
       { '@type': 'WebSite', '@id': `${SITE_URL}/#website`, name: SITE_NAME, url: SITE_URL, description: SITE_DESCRIPTION, inLanguage: 'en' },
-      { '@type': 'EducationalOrganization', '@id': `${SITE_URL}/#project`, name: `${SITE_NAME} project team`, url: SITE_URL, member: TEAM.map((name) => ({ '@type': 'Person', name })) },
+      { '@type': 'Person', '@id': `${SITE_URL}/#developer`, name: DEVELOPER.en, alternateName: DEVELOPER.ar },
     ],
   };
   return (

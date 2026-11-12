@@ -3,7 +3,10 @@ export const SITE_NAME = 'CareBite';
 export const SITE_URL = (process.env.NEXT_PUBLIC_SITE_URL ?? process.env.BETTER_AUTH_URL ?? 'http://localhost:3000').replace(/\/$/, '');
 export const SITE_DESCRIPTION = 'CareBite matches hospital meals to each patient’s prescribed diet, allergies, preferences and appetite, using Saudi government food and health guidance (MOH, SFDA, MEWA, GFSA). A university Health Informatics project.';
 
-export const TEAM = ['Lana Fahad Alhari', 'Nebras Almutairi', 'Alhanouf Aldubyan', 'Shumua Alharbi'];
+/** The website's developer (the only person credited). */
+export const DEVELOPER = { en: 'Lana Fahad Alhari', ar: 'لانا فهد الحريّ' };
+/** The project's public contact address (also the sender of account emails). */
+export const CONTACT_EMAIL = 'carebite.team@gmail.com';
 
 export const DISCLAIMER = 'CareBite is an educational Health Informatics project designed to demonstrate personalized nutritional decision support. It does not diagnose medical conditions, replace professional medical advice, or guarantee clinical outcomes. Meal suggestions depend on the available data and reviewed dietary rules. Users with complex medical conditions, prescribed diets, or uncertain allergy information should consult a qualified healthcare professional.';
 
@@ -46,4 +49,4 @@ export const ABOUT_NAV: NavItem[] = [
   { href: '/contact', label: 'Contact' },
 ];
 
-export const CITATION = 'Alhari, L. F., Almutairi, N., Aldubyan, A., & Alharbi, S. (2026). CareBite: Personalized hospital meal recommendation platform [University Health Informatics project].';
+export const CITATION = 'Alhari, L. F. (2026). CareBite: Personalized hospital meal recommendation platform [University Health Informatics project].';
