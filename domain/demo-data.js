@@ -11,6 +11,7 @@ import { INGREDIENTS } from '../data/ingredients.js';
 import { DISHES } from '../data/dishes.js';
 import { MEALS } from '../data/meals.js';
 import { MENU_CYCLE } from '../data/menu.js';
+import { screeningProfile } from './member.js';
 
 export const DEMO_PASSWORD = 'CareBite#2026';
 const DEFAULT_REVIEW_NOTE = 'Reviewed by the admin against the diet order: no added salt, portion as suggested.';
@@ -23,7 +24,10 @@ export const DEMO_ACCOUNTS = [
   { username: 'staff.demo', email: 'staff@carebite.test', name: 'Demo Staff Member', role: 'staff', summary: 'Runs meal service: offers and confirms eligible meals, prepares and delivers trays, records intake, maintains the menu, answers requests.' },
   { username: 'noura.1001', email: 'noura@carebite.test', name: 'Noura', role: 'patient', patientDemoId: 'CB-1001', summary: 'Patient account linked to CB-1001: choose meals, give feedback, ask for help.' },
   { username: 'khalid.1004', email: 'khalid@carebite.test', name: 'Khalid', role: 'patient', patientDemoId: 'CB-1004', summary: 'Patient account linked to CB-1004 (peanut and tree nut allergies).' },
+  { username: 'sara.member', email: 'sara.member@carebite.test', name: 'Sara', role: 'member', summary: 'Personal member account, not in hospital: meals that fit her food profile (sesame allergy, lactose intolerance) and a food diary with leftovers.' },
 ];
+/** The synthetic member whose food profile and diary the demo reset restores. */
+export const DEMO_MEMBER = 'sara.member';
 
 const ALL = ['small', 'regular', 'large'];
 const SR = ['small', 'regular'];
@@ -337,3 +341,51 @@ export function linkDemoAccounts(repo, patientIds) {
 }
 
 export const periodName = (p) => label(PERIODS, p);
+
+/**
+ * The demo member's self-reported food profile, two favourite meals and a few
+ * days of food diary (some leftovers, a "too big" portion). Only her documents
+ * are replaced; other members' data is never touched.
+ */
+export function seedMemberDemo({ repo, service, today }) {
+  const u = repo.getUserByUsername(DEMO_MEMBER);
+  if (!u) return;
+  repo.deleteMemberUserDocs(u.id);
+  const cat = service.catalog();
+  const at = `${today}T07:00:00.000Z`;
+  const profile = {
+    allergies: { status: 'recorded', confirmed: ['sesame'], ingredients: [], uncoded: [] },
+    intolerances: { selected: ['lactose'], ingredients: [], uncoded: [] },
+    preferences: { cuisines: ['Saudi', 'Mediterranean'], favorites: ['chicken', 'dates'].filter((i) => cat.ingredients[i]), dislikes: ['eggplant'].filter((i) => cat.ingredients[i]), preferredPortion: 'regular' },
+    appetite: 'good',
+    updatedAt: at,
+  };
+  repo.saveMemberUserDoc({ userId: u.id, kind: 'profile', doc: profile, updatedAt: at });
+  const fits = (period) => recommend(screeningProfile(profile, cat.ingredients), cat, { mealIds: cat.list.filter((m) => m.category === period).map((m) => m.id), period }).eligible.map((e) => e.mealId);
+  // Prefer meals with SFDA calorie values, so the diary and the week show calories.
+  const withKcal = (list) => { const k = list.filter((id) => cat.byId[id].nutrition.perServing.kcal != null); return k.length ? k : list; };
+  const options = Object.fromEntries(PERIOD_IDS.map((p) => [p, withKcal(fits(p))]));
+  repo.saveMemberUserDoc({ userId: u.id, kind: 'favorites', doc: { mealIds: [options.lunch[0], options.breakfast[0]].filter(Boolean) }, updatedAt: at });
+  const kcal = (mealId, portion) => { const v = cat.byId[mealId]?.nutrition.perServing.kcal; return v == null ? null : Math.round(v * portionFactor(portion)); };
+  const log = (daysAgo, period, n, amount, reasons = [], portion = 'regular') => {
+    const mealId = options[period][n % Math.max(1, options[period].length)];
+    if (!mealId) return;
+    const date = addDays(today, -daysAgo);
+    repo.saveMemberUserDoc({ userId: u.id, kind: 'log', doc: { date, period, amount, reasons, mealId, name: cat.byId[mealId].name, portion, kcalServed: kcal(mealId, portion), createdAt: `${date}T12:00:00.000Z` }, updatedAt: at });
+  };
+  log(3, 'breakfast', 0, 'all');
+  log(3, 'lunch', 1, 'most', ['portion-too-large']);
+  log(3, 'dinner', 2, 'some', ['taste']);
+  log(2, 'breakfast', 1, 'all');
+  log(2, 'lunch', 0, 'all');
+  log(2, 'dinner', 3, 'most', ['low-appetite']);
+  log(1, 'breakfast', 2, 'all');
+  log(1, 'lunch', 2, 'some', ['portion-too-large']);
+  log(1, 'dinner', 0, 'most', ['portion-too-large']);
+  const quick = (daysAgo, period, name, kcalServed, amount) => {
+    const date = addDays(today, -daysAgo);
+    repo.saveMemberUserDoc({ userId: u.id, kind: 'log', doc: { date, period, amount, reasons: [], mealId: null, name, portion: null, kcalServed, createdAt: `${date}T16:00:00.000Z` }, updatedAt: at });
+  };
+  quick(1, 'snack', 'Arabic coffee and three dates', 70, 'all');
+  quick(0, 'breakfast', 'Oats with dates and almond milk', 320, 'most');
+}

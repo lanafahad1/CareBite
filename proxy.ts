@@ -7,7 +7,7 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { getSessionCookie } from 'better-auth/cookies';
 
-const PRIVATE = ['/patients', '/dashboard', '/requests', '/schedule', '/kitchen', '/menu/manage', '/staff-access', '/my-meals', '/my-requests', '/my-profile', '/settings', '/access-pending'];
+const PRIVATE = ['/patients', '/dashboard', '/requests', '/schedule', '/kitchen', '/menu/manage', '/staff-access', '/my-meals', '/my-requests', '/my-profile', '/for-you', '/my-day', '/my-food-profile', '/settings', '/access-pending'];
 
 export function proxy(request: NextRequest) {
   const { pathname, search } = request.nextUrl;

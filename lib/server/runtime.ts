@@ -9,7 +9,7 @@ import { getMigrations } from 'better-auth/db/migration';
 import { betterAuth } from 'better-auth';
 import { createPgStore, ensureSchema, withInitLock } from '@/domain/pg-store.js';
 import { createService } from '@/domain/service.js';
-import { seedCatalog, seedHospitalDemo, linkDemoAccounts, DEMO_ACCOUNTS, DEMO_PENDING_STAFF } from '@/domain/demo-data.js';
+import { seedCatalog, seedHospitalDemo, linkDemoAccounts, seedMemberDemo, DEMO_ACCOUNTS, DEMO_PENDING_STAFF } from '@/domain/demo-data.js';
 import { authOptions, type Auth } from './auth';
 import { passwordProblem, USERNAME_RE, USERNAME_RULE } from '@/lib/password-policy';
 
@@ -84,6 +84,7 @@ async function init(): Promise<Runtime> {
     recordAccountLink: (user, patientId) => write(({ service }) => service.recordAccountLink(user, patientId)),
     getUserById: getUser,
     countActiveAdmins,
+    deleteMemberData: (userId) => write(({ repo }) => repo.deleteMemberUserDocs(userId)),
   });
 
   const resetDemo = () => write(({ repo, service }) => {
@@ -91,6 +92,8 @@ async function init(): Promise<Runtime> {
     seedCatalog(repo, new Date().toISOString());
     service.reloadCatalog();
     linkDemoAccounts(repo, seedHospitalDemo({ repo, service, today: service.today() }));
+    // Members' own data is kept; only the demo member's profile and diary are restored.
+    seedMemberDemo({ repo, service, today: service.today() });
   });
 
   // Only one server instance at a time creates tables and seeds data.
@@ -112,7 +115,8 @@ async function init(): Promise<Runtime> {
     const created = await seedDemoAccounts(auth, one);
     const counts = await one('SELECT (SELECT COUNT(*)::int FROM Meals) AS meals, (SELECT COUNT(*)::int FROM Patients) AS patients');
     if (!counts.meals) await write(({ repo }) => seedCatalog(repo, new Date().toISOString()));
-    if (created || !counts.patients) await resetDemo();
+    if (created.hospital || !counts.patients) await resetDemo();
+    else if (created.member) await write(({ repo, service }) => seedMemberDemo({ repo, service, today: service.today() }));
     await seedAdminFromEnv(auth, one);
     return auth;
   });
@@ -134,13 +138,17 @@ async function createAccount(auth: Auth, a: AccountSeed, fields: Record<string, 
 
 const usernameTaken = async (one: One, username: string) => Boolean(await one('SELECT 1 FROM "user" WHERE username = $1', [username.toLowerCase()]));
 
-/** Create the synthetic demo accounts the first time the database is used. */
-async function seedDemoAccounts(auth: Auth, one: One): Promise<boolean> {
-  let created = false;
-  const make = async (a: AccountSeed, fields: Record<string, unknown>) => {
+/**
+ * Create the synthetic demo accounts the first time the database is used. Says which
+ * kind was created: a new hospital account re-seeds the demo hospital; a new demo
+ * member only needs her own profile and diary.
+ */
+async function seedDemoAccounts(auth: Auth, one: One): Promise<{ hospital: boolean; member: boolean }> {
+  const created = { hospital: false, member: false };
+  const make = async (a: AccountSeed & { role?: string | null }, fields: Record<string, unknown>) => {
     if (await usernameTaken(one, a.username)) return;
     await createAccount(auth, a, fields, DEMO_PASSWORD);
-    created = true;
+    created[a.role === 'member' ? 'member' : 'hospital'] = true;
   };
   for (const a of DEMO_ACCOUNTS) await make(a, { role: a.role, status: 'active', isDemo: true });
   await make(DEMO_PENDING_STAFF, { role: null, status: 'pending', isDemo: false, requestedRole: DEMO_PENDING_STAFF.requestedRole, requestNote: DEMO_PENDING_STAFF.requestNote });

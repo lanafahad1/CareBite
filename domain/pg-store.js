@@ -3,8 +3,8 @@
 // The domain service is plain synchronous JavaScript, so every request works on
 // a snapshot of the data:
 // 1. One SQL statement loads a consistent snapshot of the hospital data:
-//    patients, meal schedule, intake, requests, accounts and the recent audit
-//    log. The menu catalogue is cached per server instance and reloaded only
+//    patients, meal schedule, intake, requests, accounts, the recent audit
+//    log and the member space documents (MemberDocs). The menu catalogue is cached per server instance and reloaded only
 //    when its version number changes.
 // 2. createSnapshotRepo() serves the domain from that snapshot, with the same
 //    interface and ordering as the in-memory test repository (and the SQLite
@@ -395,6 +395,18 @@ CREATE TABLE IF NOT EXISTS AuditLog (
   detail TEXT NOT NULL
 );
 CREATE INDEX IF NOT EXISTS idx_audit_patient ON AuditLog(patient_id, id);
+
+-- Member space (personal accounts outside the hospital): one self-reported food profile, one
+-- list of favourite meals and many food diary entries per member, stored as JSON documents.
+-- Never shown to hospital roles and never written to the AuditLog.
+CREATE TABLE IF NOT EXISTS MemberDocs (
+  id INTEGER PRIMARY KEY,
+  user_id TEXT NOT NULL,
+  kind TEXT NOT NULL CHECK (kind IN ('profile','favorites','log')),
+  doc TEXT NOT NULL,
+  updated_at TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_member_docs_user ON MemberDocs(user_id, kind);
 `;
 
 const J = (v) => JSON.stringify(v ?? null);
@@ -549,6 +561,9 @@ const auditToRow = (a, id) => ({
 });
 const auditFromRow = (r) => ({ id: String(r.id), at: r.at, actorId: S(r.actor_id), actorRole: r.actor_role, actorName: r.actor_name, patientId: S(r.patient_id), action: r.action, detail: r.detail });
 
+const memberDocToRow = (m, id) => ({ id: Number(id), user_id: String(m.userId), kind: m.kind, doc: J(m.doc ?? {}), updated_at: m.updatedAt });
+const memberDocFromRow = (r) => ({ id: String(r.id), userId: r.user_id, kind: r.kind, doc: P(r.doc, {}), updatedAt: r.updated_at });
+
 const ingredientToRow = (i, seq) => ({
   id: i.id, seq, name: i.name, same_food: i.sameFood ?? null, ingredient_group: i.group ?? 'other', local_commodity: i.local ?? null, allergens: J(i.allergens ?? []), may_contain: J(i.mayContain ?? []),
   flags: J(i.flags ?? []), label_check: i.labelCheck ? 1 : 0, note: i.note ?? null, updated_at: i.updatedAt ?? null, updated_by: i.updatedBy ?? null,
@@ -669,11 +684,13 @@ const HOSPITAL_SQL = `
   'requests', ${agg('row_to_json(r)', 'PatientRequests r', 'r.id')},
   'audit', ${agg(`json_build_object('id', a.id, 'at', a.at, 'actor_id', a.actor_id, 'actor_role', a.actor_role, 'actor_name', a.actor_name, 'patient_id', a.patient_id, 'action', a.action, 'detail', a.detail)`,
     `(SELECT x.*, row_number() OVER (PARTITION BY x.patient_id, split_part(x.action, '.', 1) ORDER BY x.id DESC) AS rn FROM AuditLog x) a WHERE a.rn <= ${AUDIT_WINDOW}`, 'a.id')},
+  'memberDocs', ${agg('row_to_json(m)', 'MemberDocs m', 'm.id')},
   'maxIds', json_build_object('patients', (SELECT coalesce(max(id), 0) FROM Patients), 'entries', (SELECT coalesce(max(id), 0) FROM MealSchedule),
-    'intake', (SELECT coalesce(max(id), 0) FROM MealIntake), 'requests', (SELECT coalesce(max(id), 0) FROM PatientRequests), 'audit', (SELECT coalesce(max(id), 0) FROM AuditLog)),`;
+    'intake', (SELECT coalesce(max(id), 0) FROM MealIntake), 'requests', (SELECT coalesce(max(id), 0) FROM PatientRequests), 'audit', (SELECT coalesce(max(id), 0) FROM AuditLog),
+    'memberDocs', (SELECT coalesce(max(id), 0) FROM MemberDocs)),`;
 // Public pages need only the menu catalogue.
-const NO_HOSPITAL_SQL = `'users', '[]'::json, 'patients', '[]'::json, 'entries', '[]'::json, 'intake', '[]'::json, 'requests', '[]'::json, 'audit', '[]'::json,
-  'maxIds', json_build_object('patients', 0, 'entries', 0, 'intake', 0, 'requests', 0, 'audit', 0),`;
+const NO_HOSPITAL_SQL = `'users', '[]'::json, 'patients', '[]'::json, 'entries', '[]'::json, 'intake', '[]'::json, 'requests', '[]'::json, 'audit', '[]'::json, 'memberDocs', '[]'::json,
+  'maxIds', json_build_object('patients', 0, 'entries', 0, 'intake', 0, 'requests', 0, 'audit', 0, 'memberDocs', 0),`;
 const snapshotSql = (hospital) => `SELECT json_build_object(${hospital ? HOSPITAL_SQL : NO_HOSPITAL_SQL}
   'catalogVersion', (SELECT value FROM Meta WHERE key = 'catalog_version'),
   'catalog', CASE WHEN (SELECT value FROM Meta WHERE key = 'catalog_version') IS DISTINCT FROM $1::text THEN json_build_object(
@@ -723,6 +740,7 @@ export async function loadSnapshot(db, catalogCache = null, { hospital = true } 
     intake: new Map(s.intake.map((r) => [String(r.id), intakeFromRow(r)])),
     requests: new Map(s.requests.map((r) => [String(r.id), requestFromRow(r)])),
     audit: new Map(s.audit.map((r) => [String(r.id), auditFromRow(r)])),
+    memberDocs: new Map(s.memberDocs.map((r) => [String(r.id), memberDocFromRow(r)])),
     maxIds: s.maxIds,
     catalogCache: catalog,
   };
@@ -739,6 +757,7 @@ export function createSnapshotRepo(snapshot, { readOnly = false } = {}) {
   const s = {
     users: new Map(snapshot.users), patients: new Map(snapshot.patients), entries: new Map(snapshot.entries),
     intake: new Map(snapshot.intake), requests: new Map(snapshot.requests), audit: new Map(snapshot.audit),
+    memberDocs: new Map(snapshot.memberDocs),
   };
   const maxIds = { ...snapshot.maxIds };
   const nextId = (table) => String(++maxIds[table]);
@@ -928,6 +947,18 @@ export function createSnapshotRepo(snapshot, { readOnly = false } = {}) {
       return clone(rows.slice(0, Math.min(limit, AUDIT_WINDOW)));
     },
 
+    // ---- member space documents (personal accounts; kept by the demo reset except the demo member's)
+    listMemberUserDocs: (userId, kind = null) => clone([...s.memberDocs.values()].filter((d) => d.userId === String(userId) && (!kind || d.kind === kind)).sort((a, b) => Number(a.id) - Number(b.id))),
+    getMemberUserDoc: (id) => clone(s.memberDocs.get(String(Number(id))) ?? null),
+    saveMemberUserDoc(d) {
+      guard();
+      const id = d.id != null && s.memberDocs.has(String(Number(d.id))) ? String(Number(d.id)) : nextId('memberDocs');
+      s.memberDocs.set(id, memberDocFromRow(memberDocToRow({ ...d, updatedAt: d.updatedAt ?? new Date().toISOString() }, id)));
+      return clone(s.memberDocs.get(id));
+    },
+    deleteMemberUserDoc(id) { guard(); s.memberDocs.delete(String(Number(id))); },
+    deleteMemberUserDocs(userId) { guard(); for (const [k, d] of s.memberDocs) if (d.userId === String(userId)) s.memberDocs.delete(k); },
+
     clearHospitalData() {
       guard();
       for (const u of users()) if (u.patientId != null) setUser(u.id, { ...u, patientId: null });
@@ -967,7 +998,7 @@ function diff(before, after) {
 /** Write what changed in a snapshot repository, in dependency order. Call inside the write transaction. */
 export async function saveChanges(client, repo) {
   const { snapshot, s, cat, base, catalogReplaced, effects } = repo._changes();
-  const d = Object.fromEntries(['users', 'patients', 'entries', 'intake', 'requests', 'audit'].map((k) => [k, diff(snapshot[k], s[k])]));
+  const d = Object.fromEntries(['users', 'patients', 'entries', 'intake', 'requests', 'audit', 'memberDocs'].map((k) => [k, diff(snapshot[k], s[k])]));
   const ids = (keys) => keys.map(Number);
 
   // Accounts: only the CareBite fields that changed; better-auth owns everything else.
@@ -989,6 +1020,7 @@ export async function saveChanges(client, repo) {
   if (d.intake.removed.length) await client.query('DELETE FROM MealIntake WHERE id = ANY($1)', [ids(d.intake.removed)]);
   if (d.entries.removed.length) await client.query('DELETE FROM MealSchedule WHERE id = ANY($1)', [ids(d.entries.removed)]);
   if (d.patients.removed.length) await client.query('DELETE FROM Patients WHERE id = ANY($1)', [ids(d.patients.removed)]);
+  if (d.memberDocs.removed.length) await client.query('DELETE FROM MemberDocs WHERE id = ANY($1)', [ids(d.memberDocs.removed)]);
 
   // Patients and their profile tables.
   if (d.patients.changed.length) {
@@ -1028,6 +1060,7 @@ export async function saveChanges(client, repo) {
   await flat('MealIntake', 'intake', intakeToRow);
   await flat('PatientRequests', 'requests', requestToRow);
   await flat('AuditLog', 'audit', auditToRow);
+  await flat('MemberDocs', 'memberDocs', memberDocToRow);
 
   // Menu catalogue.
   let catalogChanged = false;

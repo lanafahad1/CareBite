@@ -3,7 +3,7 @@ import { MainNav } from './main-nav';
 import { getViewer, homeFor } from '@/lib/server/session';
 import { emailConfigured } from '@/lib/server/email';
 import { VerifyEmailBanner } from '@/components/auth/verify-banner';
-import { PUBLIC_NAV, STAFF_NAV, PATIENT_NAV } from '@/lib/site';
+import { PUBLIC_NAV, STAFF_NAV, PATIENT_NAV, MEMBER_NAV } from '@/lib/site';
 
 /** Server-rendered header: navigation comes from the session role and its RBAC permissions. */
 export async function SiteHeader() {
@@ -12,6 +12,7 @@ export async function SiteHeader() {
   const nav = !viewer ? PUBLIC_NAV
     : !active ? [{ href: '/access-pending', label: 'Access request' }]
       : viewer.role === 'patient' ? PATIENT_NAV
+        : viewer.role === 'member' ? MEMBER_NAV
         : STAFF_NAV.filter((i) => !i.permission || viewer.permissions.includes(i.permission));
   const more = viewer ? PUBLIC_NAV.filter((i) => !nav.some((n) => n.href === i.href)) : [];
   const home = viewer ? homeFor({ role: viewer.role, status: viewer.status }) : '/';

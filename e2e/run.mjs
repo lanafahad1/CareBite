@@ -63,7 +63,9 @@ ok(/^(Choose your|Your )/.test((await noura.locator('main').textContent()).match
 ok(!(await noura.evaluate(() => document.documentElement.scrollWidth > innerWidth + 1)), 'My Meals has no horizontal scroll at 390 px');
 let choose = noura.locator('.t-acc[data-open=true] button:visible', { hasText: /^Choose this meal$/ }).first();
 if (!(await choose.count())) {
-  await noura.locator('section[id^=mp-] button[aria-expanded=false]').first().click();
+  // Open the first meal period that still has a choice to make (which one depends on the time of day).
+  const withChoice = await noura.locator('section[id^=mp-]').evaluateAll((els) => els.filter((e) => [...e.querySelectorAll('button')].some((b) => b.textContent.trim() === 'Choose this meal')).map((e) => e.id));
+  await noura.locator(`#${withChoice[0]} button[aria-expanded=false]`).first().click();
   choose = noura.locator('.t-acc[data-open=true] button:visible', { hasText: /^Choose this meal$/ }).first();
 }
 const chosenPeriod = (await choose.evaluate((b) => b.closest('section[id^=mp-]')?.id ?? '')).replace('mp-', '');
@@ -83,7 +85,13 @@ ok(after.periods.find((p) => p.period === sel.period)?.entry?.status === 'confir
 
 // ---------------------------------------------------------------- 3. alternative request → response
 await noura.goto(`${base}/my-meals`);
-await noura.getByRole('button', { name: /Ask for a different meal/ }).first().click();
+// Which meal periods are open depends on the time of day: open a collapsed one that has the button first.
+const askOpen = noura.locator('button:not(.t-acc[data-open=false] button)', { hasText: /Ask for a different meal/ });
+if (!(await askOpen.count())) {
+  const withAsk = await noura.locator('section[id^=mp-]').evaluateAll((els) => els.filter((e) => [...e.querySelectorAll('button')].some((b) => /Ask for a different meal/.test(b.textContent))).map((e) => e.id));
+  if (withAsk[0]) await noura.locator(`#${withAsk[0]} button[aria-expanded=false]`).first().click();
+}
+await askOpen.first().click();
 await dialog(noura).locator('textarea').fill('Could I have something with more vegetables? (e2e)');
 await dialog(noura).getByRole('button', { name: /Send to the nutrition team/ }).click();
 await dialog(noura).getByText(/Pending/).first().waitFor({ timeout: 6000 }).catch(() => {});
@@ -204,8 +212,79 @@ ok(esc.status() >= 400 && /not allowed/i.test(await esc.text()), 'sign-up cannot
 const weak = await anon.request.post(`${base}/api/auth/sign-up/email`, { data: { accountType: 'staff', email: `w${Date.now()}@test.local`, password: 'short', name: 'W', username: `w${Date.now() % 100000}`, requestedRole: 'staff', requestNote: 'x' }, headers: { Origin: base } });
 ok(weak.status() === 422 && /at least 8/.test(await weak.text()), 'passwords shorter than 8 characters are refused');
 
+// ---------------------------------------------------------------- 11. member space: sign-up → profile → meals for you → my day with leftovers → week
+const fresh = await browser.newContext({ viewport: { width: 390, height: 900 } });
+const loginPage = await fresh.newPage();
+await loginPage.goto(`${base}/login`);
+ok(await loginPage.getByRole('link', { name: 'Forgot password?' }).count() > 0, 'login has a "Forgot password?" link');
+await fresh.close();
+
+const mctx = await browser.newContext({ viewport: { width: 390, height: 900 } });
+const mem = await mctx.newPage();
+waitForContent(mem);
+mem.on('pageerror', (e) => pageErrors.push(`[new member] ${e.message}`));
+const stamp = Date.now() % 1000000;
+await mem.goto(`${base}/register`);
+ok(await mem.locator('input[name=accountType][value=member]').isChecked(), 'register: Member is the default account type');
+await mem.fill('#reg-name', 'Mona');
+await mem.fill('#reg-username', `mona${stamp}`);
+await mem.fill('#reg-email', `mona${stamp}@carebite.test`);
+await mem.fill('#reg-password', 'green tea and dates 7');
+await mem.fill('#reg-confirm', 'green tea and dates 7');
+await mem.locator('#reg-terms').check();
+await mem.getByRole('button', { name: 'Create account' }).click();
+await mem.waitForURL(/\/for-you/, { timeout: 15000 }).catch(() => {});
+ok(/\/for-you/.test(mem.url()), 'a new member lands on Meals for you');
+const me = await json(mem, '/api/account/me');
+ok(me.user?.role === 'member' && me.user?.status === 'active' && me.user?.permissions?.join() === 'member:own', 'member account is active with only member:own');
+await mem.getByRole('link', { name: 'Set up my food profile' }).click();
+await mem.waitForURL(/\/my-food-profile/);
+await mem.getByText('Yes, I have food allergies').click();
+await mem.locator('input[name=allergens][value=sesame]').check({ force: true });
+await mem.getByRole('button', { name: 'Save and see my meals' }).click();
+await mem.waitForURL(/\/for-you/, { timeout: 15000 }).catch(() => {});
+const cards = mem.locator('main article');
+await cards.first().waitFor({ timeout: 15000 }).catch(() => {});
+ok(await cards.count() > 0, 'Meals for you lists meals after the profile is saved');
+ok(!/patient|nutrition team|approved/i.test(await mem.locator('main').textContent()), 'member pages never say “patient” or “approved by the nutrition team”');
+const firstName = (await cards.first().locator('h3').textContent()).trim();
+await cards.first().getByRole('button', { name: /Add .* to my day/ }).click();
+await dialog(mem).getByText('Most', { exact: true }).click();
+await dialog(mem).getByText('Too big', { exact: true }).click();
+await dialog(mem).getByRole('button', { name: 'Add to my day' }).click();
+ok(await seeToast(mem, /Added to your day/), 'a menu meal was added to my day with leftovers');
+await mem.goto(`${base}/my-day`);
+const dayText = await mem.locator('main').textContent();
+ok(dayText.includes(firstName) && /Your week/.test(dayText) && /left over/.test(dayText), 'My day shows the meal, kcal eaten, leftovers and the week card');
+const week = await json(mem, '/api/member/week');
+ok(week.daysLogged === 1 && week.leftoverShare === 25 && week.reasons[0]?.id === 'portion-too-large', 'the week counts leftovers (25%) and the “too big” reason');
+const meals = await json(mem, '/api/member/meals');
+ok(meals.meals.every((m) => !m.allergens.contains.includes('sesame')) && meals.meals.some((m) => /too big/.test(m.portion?.explanation ?? '')), 'sesame meals are hidden and “too big” makes portions smaller');
+await mem.getByRole('button', { name: 'Add food' }).first().click();
+await dialog(mem).getByRole('button', { name: /Quick add/ }).click();
+await dialog(mem).locator('#log-name').fill('Laban and dates (e2e)');
+await dialog(mem).locator('#log-kcal').fill('210');
+await dialog(mem).getByText('All of it', { exact: true }).click();
+await dialog(mem).getByRole('button', { name: 'Add to my day' }).click();
+ok(await seeToast(mem, /Added to your day/), 'quick add with name and calories');
+
+// Isolation: hospital roles never reach member data; members never reach hospital data.
+for (const [who, pg] of [['admin', admin], ['staff', staff], ['patient', noura]]) {
+  ok((await api(pg, 'GET', '/api/member/profile')).status() === 403 && (await api(pg, 'GET', '/api/member/day')).status() === 403
+    && (await api(pg, 'POST', '/api/member/log', { date: today, period: 'lunch', name: 'x', kcal: 1, amount: 'all' })).status() === 403, `${who}: member APIs are 403`);
+}
+ok(await statusOf(staff, '/for-you') === 403 && await statusOf(noura, '/my-day') === 403 && await statusOf(admin, '/my-food-profile') === 403, 'hospital roles: member pages are 403');
+ok(await statusOf(mem, '/patients') === 403 && await statusOf(mem, '/my-meals') === 403 && await statusOf(mem, '/kitchen') === 403 && await statusOf(mem, '/staff-access') === 403, 'member: hospital pages are 403');
+ok((await api(mem, 'GET', '/api/patients/1')).status() === 403 && (await api(mem, 'GET', '/api/kitchen')).status() === 403 && (await api(mem, 'GET', '/api/admin/staff')).status() === 403, 'member: hospital APIs are 403');
+const staffNow = await json(admin, '/api/admin/staff');
+ok(![...staffNow.pending, ...staffNow.staff].some((u) => u.role === 'member' || u.username === `mona${stamp}`), 'members never appear in Staff Access');
+const sara = await session('sara.member', 390);
+const saraDay = await json(sara, '/api/member/day');
+ok(!saraDay.entries.some((e) => e.name === 'Laban and dates (e2e)'), 'members see only their own diary');
+await mctx.close();
+
 // ---------------------------------------------------------------- 10. pages at phone width: no overflow, no errors
-const sweep = { 'noura.1001': ['/my-meals', '/my-meals?view=week', '/my-requests', '/my-profile', '/settings'], 'staff.demo': ['/patients', '/patients/1', '/patients/1?tab=profile', '/patients/1?tab=intake', '/dashboard', '/requests', '/schedule', '/kitchen', '/menu/manage'], 'admin.demo': ['/patients/new', '/staff-access', '/menu/manage?tab=sfct'] };
+const sweep = { 'sara.member': ['/for-you', '/for-you?period=breakfast', '/my-day', '/my-food-profile', '/settings'], 'noura.1001': ['/my-meals', '/my-meals?view=week', '/my-requests', '/my-profile', '/settings'], 'staff.demo': ['/patients', '/patients/1', '/patients/1?tab=profile', '/patients/1?tab=intake', '/dashboard', '/requests', '/schedule', '/kitchen', '/menu/manage'], 'admin.demo': ['/patients/new', '/staff-access', '/menu/manage?tab=sfct'] };
 for (const [user, paths] of Object.entries(sweep)) {
   const pg = await session(user, 390);
   for (const p of paths) {

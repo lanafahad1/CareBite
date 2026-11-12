@@ -32,6 +32,13 @@ export const PATIENT_NAV: NavItem[] = [
   { href: '/my-profile', label: 'My Food Profile' },
 ];
 
+/** Members (personal accounts outside the hospital): three calm items. */
+export const MEMBER_NAV: NavItem[] = [
+  { href: '/for-you', label: 'Meals for you' },
+  { href: '/my-day', label: 'My day' },
+  { href: '/my-food-profile', label: 'My food profile' },
+];
+
 export const ABOUT_NAV: NavItem[] = [
   { href: '/about', label: 'About the project' },
   { href: '/diets', label: 'Diets & rules' },

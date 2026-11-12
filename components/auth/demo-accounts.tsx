@@ -1,6 +1,6 @@
 'use client';
 import * as React from 'react';
-import { Lock, Users, User, Loader2 } from 'lucide-react';
+import { Lock, Users, User, Heart, Loader2 } from 'lucide-react';
 import { authClient, authErrorMessage } from '@/lib/auth-client';
 import { Button } from '@/components/ui/button';
 import { toast } from '@/components/ui/toast';
@@ -9,9 +9,9 @@ import { useAfterSignIn } from './use-after-sign-in';
 
 export type DemoAccount = { username: string; name: string; role: string; roleLabel: string; summary: string; patientDemoId: string | null };
 
-const ROLE_ICON = { admin: Lock, staff: Users, patient: User } as Record<string, typeof Lock>;
-const ROLE_TONE: Record<string, string> = { admin: 'bg-heading text-white', staff: 'bg-sage text-sage-deep', patient: 'bg-rose text-rose-ink' };
-const ORDER = ['admin', 'staff', 'patient'];
+const ROLE_ICON = { admin: Lock, staff: Users, patient: User, member: Heart } as Record<string, typeof Lock>;
+const ROLE_TONE: Record<string, string> = { admin: 'bg-heading text-white', staff: 'bg-sage text-sage-deep', patient: 'bg-rose text-rose-ink', member: 'bg-mint text-heading' };
+const ORDER = ['admin', 'staff', 'patient', 'member'];
 
 /** One-click demo sign-in. The shared demo password is published on this page, so it is not a secret. */
 export function DemoAccountList({ accounts, password, next }: { accounts: DemoAccount[]; password: string; next: string | null }) {

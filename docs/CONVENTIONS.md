@@ -23,6 +23,13 @@ Three roles: `admin` (everything, incl. clinical edits, review approvals, menu v
 access), `staff` (daily meal service; no clinical edits/approvals/access management), `patient`
 (own record only). Permissions are named in `domain/rbac.js` (e.g. `patient:list`,
 `patient:edit-clinical`, `meal:approve-review`, `kitchen:progress`, `menu:verify`, `staff:manage`).
+Plus one personal role outside the hospital, `member` (`HOSPITAL_ROLE_IDS` stays the three above):
+members hold only `member:own` (their own food profile, meals that fit them and food diary in
+`domain/member.js`, stored in `MemberDocs`). No hospital role can read member data, members get 403 on
+every hospital page and API, and nothing about members goes to the AuditLog. Member pages
+(`/for-you`, `/my-day`, `/my-food-profile`) gate on `requirePermission('member:own', ...)` in their layout.
+Members only self-report (allergies, intolerances, likes, dislikes, cuisines, appetite, portion):
+never add diet orders or medical diets for them.
 - Pages: `const actor = await requirePermission('<permission>', '/path')` (from `@/lib/server/session`).
   Patient pages: `requirePermission('patient:read', ...)` then check `actor.role === 'patient'`
   (use `forbidden()` from `next/navigation` for other roles where the page is patient-only).
@@ -81,7 +88,9 @@ The JSON API is `app/api/[...path]/route.ts` → `lib/server/api-handler.ts` (CS
   notice and the patient messages "Choose your lunch." / "Your choice has been sent to the nutrition
   team." / "Your meal is confirmed." / "Your meal is being prepared." / "Your meal has been delivered."
 - Never claim notifications, real identity verification, storage or hospital integrations work.
-- Use the demo/synthetic wording the old pages use. No shopping lists or consumer features.
+- Use the demo/synthetic wording the old pages use. The only personal (consumer) feature is the member
+  space: meals that fit you, a food diary with leftovers, and a self-reported food profile. No shopping
+  lists. Member copy says "you", never "the patient" or "approved by the nutrition team".
 
 ## SEO (public pages)
 Server-render content, one `h1`, semantic landmarks, `pageMetadata({ title, description, path })`,
@@ -92,7 +101,7 @@ to `<script type="application/ld+json">`). Private pages use `privateMetadata` (
 - One shared dev server runs at http://localhost:3000 (do **not** start another, restart it, delete
   the database, or call the demo reset endpoint — other contributors are testing at the same time).
 - Demo accounts (password `CareBite#2026`): `admin.demo`, `staff.demo`, `noura.1001` (patient CB-1001),
-  `khalid.1004` (patient CB-1004); `layla.applicant` is a pending staff request.
+  `khalid.1004` (patient CB-1004), `sara.member` (member); `layla.applicant` is a pending staff request.
 - Type-check: `npx tsc --noEmit -p .` (fix errors in your files; ignore other areas' in-progress errors).
 - Browser check (Playwright, Chromium preinstalled):
   `node /tmp/claude-0/-home-user/f675115f-ca25-54e1-818a-5df21ee58ab7/scratchpad/pw/nx.mjs http://localhost:3000 <outdir> <username|-> /path1 /path2`

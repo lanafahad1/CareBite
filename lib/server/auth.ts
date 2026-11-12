@@ -10,7 +10,8 @@
 // - No account enumeration on sign-in: better-auth answers "invalid username/email or
 //   password" whichever part was wrong, and hashes even when the user does not exist.
 // - Privilege: role, status and patient link are server-only fields (input: false);
-//   sign-up never grants a staff role. Patients need a one-time link code.
+//   sign-up never grants a staff role. Patients need a one-time link code; members
+//   (personal accounts outside the hospital) get only the member space.
 // - Sessions: 8-hour lifetime with sliding refresh, rotated on sign-in, revoked
 //   on password change, deactivation and account deletion.
 // - CSRF: better-auth checks Origin against trustedOrigins; cookies are SameSite=Lax.
@@ -27,6 +28,8 @@ type Domain = {
   recordAccountLink: (user: { id: string; username: string; name: string }, patientId: string) => Promise<void>;
   getUserById: (id: string) => Promise<{ isDemo?: boolean; role?: string | null; status?: string } | null>;
   countActiveAdmins: () => Promise<number>;
+  /** Remove a member's food profile, favourites and diary (account deletion). */
+  deleteMemberData: (userId: string) => Promise<void>;
 };
 
 const SECURE = process.env.NODE_ENV === 'production' && process.env.BETTER_AUTH_URL?.startsWith('https://');
@@ -96,6 +99,8 @@ export function authOptions(db: Pool, domain: Domain) {
           if (u?.isDemo) throw new APIError('FORBIDDEN', { message: 'Shared demo accounts cannot be deleted.' });
           if (u?.role === 'admin' && (await domain.countActiveAdmins()) <= 1) throw new APIError('FORBIDDEN', { message: 'The last admin account cannot be deleted.' });
         },
+        // A member's food profile, favourites and diary belong to the account and go with it.
+        afterDelete: async (user) => { await domain.deleteMemberData(user.id); },
       },
     },
     rateLimit: {
@@ -140,8 +145,8 @@ export function authOptions(db: Pool, domain: Domain) {
             if (!String(body.requestNote ?? '').trim()) fieldError('requestNote', 'Tell the admin your department or job title.');
           } else if (body.accountType === 'patient') {
             if (!String(body.linkCode ?? '').trim()) fieldError('linkCode', 'Enter the link code the nutrition team gave you.');
-          } else {
-            fieldError('accountType', 'Choose a patient or staff account.');
+          } else if (body.accountType !== 'member') {
+            fieldError('accountType', 'Choose a member, patient or staff account.');
           }
         }
         if (ctx.path === '/reset-password') {
@@ -202,6 +207,8 @@ export function authOptions(db: Pool, domain: Domain) {
               catch (e) { fieldError('linkCode', (e as Error).message); }
               return { data: { ...user, role: 'patient', status: 'active', patientId: String(patient.id), requestedRole: null, requestNote: null, isDemo: false } };
             }
+            // Members are personal accounts outside the hospital: active at once, no hospital access.
+            if (body.accountType === 'member') return { data: { ...user, role: 'member', status: 'active', patientId: null, requestedRole: null, requestNote: null, isDemo: false } };
             return { data: { ...user, role: null, status: 'pending', patientId: null, isDemo: false } };
           },
           after: async (user, ctx) => {

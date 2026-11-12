@@ -13,7 +13,7 @@ import { toast } from '@/components/ui/toast';
 import { ShowPassword, FormError, SubmitButton, focusFirstInvalid, type AuthError } from './form-bits';
 import { useAfterSignIn } from './use-after-sign-in';
 
-type AccountType = 'patient' | 'staff';
+export type AccountType = 'member' | 'patient' | 'staff';
 type Key = 'name' | 'username' | 'email' | 'password' | 'confirmPassword' | 'linkCode' | 'requestedRole' | 'requestNote' | 'terms' | 'accountType';
 type Errors = Partial<Record<Key, string>>;
 type Values = Record<Exclude<Key, 'terms' | 'accountType'>, string>;
@@ -70,7 +70,7 @@ export function RegisterForm({ next, initialType }: { next: string | null; initi
   const [formError, setFormError] = React.useState<string | null>(null);
   const [pending, setPending] = React.useState(false);
   const [done, setDone] = React.useState<{ type: AccountType; user: { role?: string | null; status?: string | null } } | null>(null);
-  const after = useAfterSignIn(type === 'patient' ? next : null);
+  const after = useAfterSignIn(type === 'staff' ? null : next);
 
   const set = (k: keyof Values) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => setV((s) => ({ ...s, [k]: e.target.value }));
 
@@ -99,7 +99,7 @@ export function RegisterForm({ next, initialType }: { next: string | null; initi
       accountType: type,
       ...(type === 'patient'
         ? { linkCode: v.linkCode.trim().toUpperCase() }
-        : { requestedRole: v.requestedRole, requestNote: v.requestNote.trim() }),
+        : type === 'staff' ? { requestedRole: v.requestedRole, requestNote: v.requestNote.trim() } : {}),
     };
     const { data, error } = await authClient.signUp.email(body as Parameters<typeof authClient.signUp.email>[0]);
     if (error || !data) {
@@ -112,20 +112,23 @@ export function RegisterForm({ next, initialType }: { next: string | null; initi
     }
     setV(EMPTY);
     const user = data.user as { role?: string | null; status?: string | null };
-    toast(user.role === 'patient' ? 'Account created and linked to your meal profile.' : 'Access request sent. An admin will review it.', { timeout: 7000 });
+    toast(user.role === 'member' ? 'Welcome to CareBite. Your account is ready.' : user.role === 'patient' ? 'Account created and linked to your meal profile.' : 'Access request sent. An admin will review it.', { timeout: 7000 });
     setDone({ type, user });
   };
 
   if (done) {
     const patient = done.user.role === 'patient';
+    const member = done.user.role === 'member';
     return (
       <div role="status" className="flex flex-col items-start gap-3 rounded-[18px] border border-sage bg-mint p-5">
         <SuccessCheck />
-        <h2 className="text-xl">{patient ? 'Your account is ready' : 'Access request sent'}</h2>
+        <h2 className="text-xl">{patient || member ? 'Your account is ready' : 'Access request sent'}</h2>
         <p className="text-sage-deep">
-          {patient
-            ? 'Your account is linked to your hospital meal profile. Taking you to your meals…'
-            : 'An admin will review your request and assign your role. Taking you to your request status…'}
+          {member
+            ? 'Next, tell us a little about your food so we can show meals that fit you. Taking you there…'
+            : patient
+              ? 'Your account is linked to your hospital meal profile. Taking you to your meals…'
+              : 'An admin will review your request and assign your role. Taking you to your request status…'}
         </p>
         <Button onClick={() => after(done.user)}>Continue<ArrowRight aria-hidden /></Button>
       </div>
@@ -136,14 +139,19 @@ export function RegisterForm({ next, initialType }: { next: string | null; initi
     <form ref={formRef} onSubmit={submit} noValidate className="flex flex-col gap-5" aria-busy={pending || undefined}>
       <fieldset className="flex flex-col gap-2">
         <legend className="mb-2 font-display text-sm font-medium text-heading">Account type</legend>
-        <div className="grid gap-2 sm:grid-cols-2">
+        <div className="grid gap-2">
+          <OptionCard name="accountType" value="member" checked={type === 'member'} onChange={() => { setType('member'); setErrors({}); }} title="Member" description="For yourself, not in hospital. See meals that fit you and waste less." />
           <OptionCard name="accountType" value="patient" checked={type === 'patient'} onChange={() => { setType('patient'); setErrors({}); }} title="Patient" description="Use the link code the nutrition team gave you to reach your own profile." />
           <OptionCard name="accountType" value="staff" checked={type === 'staff'} onChange={() => { setType('staff'); setErrors({}); }} title="Hospital staff" description="Ask for staff access. An admin approves it and assigns your role." />
         </div>
         {errors.accountType ? <p role="alert" className="text-sm font-semibold text-destructive">{errors.accountType}</p> : null}
       </fieldset>
 
-      {type === 'patient' ? (
+      {type === 'member' ? (
+        <Field id="reg-name" label="Your name" optional error={errors.name} hint="Shown on your pages. If you leave it empty, your username is shown.">
+          <Input name="name" value={v.name} onChange={set('name')} autoComplete="given-name" maxLength={40} />
+        </Field>
+      ) : type === 'patient' ? (
         <>
           <Field id="reg-link" label="Link code" error={errors.linkCode} hint="A one-time code from the nutrition team (valid for 72 hours). It connects this account to your hospital meal profile.">
             <Input name="linkCode" value={v.linkCode} onChange={set('linkCode')} autoComplete="one-time-code" autoCapitalize="characters" autoCorrect="off" spellCheck={false} maxLength={12} placeholder="ABCD-2345" className="uppercase tracking-wider placeholder:normal-case" />

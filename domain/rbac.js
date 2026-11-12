@@ -4,16 +4,21 @@
 // not have. Ownership ("a patient sees only their own record") is checked in
 // the service on top of the permission.
 //
-// Three roles:
+// Three hospital roles:
 //   admin   — controls everything, including clinical information and staff access
 //   staff   — runs daily meal service; no clinical edits, review approvals or access management
 //   patient — their own meals, profile, feedback and requests
+// plus one personal role outside the hospital:
+//   member  — their own food profile, meals that fit them and their food diary.
+//             Members hold no hospital permission, and no hospital role can read member data.
 
-export const ROLE_IDS = ['admin', 'staff', 'patient'];
+export const HOSPITAL_ROLE_IDS = ['admin', 'staff', 'patient'];
+export const ROLE_IDS = [...HOSPITAL_ROLE_IDS, 'member'];
 
 const ALL = ['admin', 'staff', 'patient'];
 const TEAM = ['admin', 'staff'];
 const ADMIN = ['admin'];
+const MEMBER = ['member'];
 
 /** permission → roles that hold it */
 export const PERMISSIONS = Object.freeze({
@@ -54,6 +59,8 @@ export const PERMISSIONS = Object.freeze({
   // platform
   'staff:manage': ADMIN,
   'demo:reset': ADMIN,
+  // member space (own data only; ownership checked in domain/member.js)
+  'member:own': MEMBER,
 });
 
 /** Profile sections and the permission that edits each. */

@@ -250,7 +250,7 @@ function DataCard({ viewer }: { viewer: Viewer }) {
     <Card aria-labelledby="data-h">
       <SectionTitle id="data-h" icon={Database}>Your data</SectionTitle>
       <p className="text-sm">
-        Export the information linked to your account as a JSON file{viewer.role === 'patient' ? ': account details, your nutrition profile, meal schedule, intake and feedback, and requests' : ': your account details'}.
+        Export the information linked to your account as a JSON file{viewer.role === 'patient' ? ': account details, your nutrition profile, meal schedule, intake and feedback, and requests' : viewer.role === 'member' ? ': account details, your food profile, favourite meals and food diary' : ': your account details'}.
       </p>
       <div className="flex flex-col gap-2 sm:flex-row">
         {/* A plain link: the server answers with an attachment, so the browser downloads it. */}
@@ -340,7 +340,7 @@ function DeleteCard({ viewer }: { viewer: Viewer }) {
     <Card className="border-[#F2C9D2]" aria-labelledby="del-h">
       <SectionTitle id="del-h" icon={Trash2} className="flex items-center gap-2 text-destructive">Delete account</SectionTitle>
       <p className="text-sm">
-        Permanently delete your personal account. {viewer.role === 'patient' ? 'Your hospital nutrition record is kept by the hospital nutrition team.' : 'Changes you made remain in patients’ audit logs under your display name.'}
+        Permanently delete your personal account. {viewer.role === 'patient' ? 'Your hospital nutrition record is kept by the hospital nutrition team.' : viewer.role === 'member' ? 'Your food profile, favourite meals and food diary are deleted with it.' : 'Changes you made remain in patients’ audit logs under your display name.'}
       </p>
       <Dialog open={open} onOpenChange={onOpenChange}>
         <Button variant="destructive" className="w-full sm:w-auto sm:self-start" onClick={() => setOpen(true)}><Trash2 aria-hidden />Delete my account</Button>

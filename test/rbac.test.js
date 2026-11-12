@@ -1,14 +1,24 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { PERMISSIONS, ROLE_IDS, can, permissionsFor, SECTION_PERMISSION } from '../domain/rbac.js';
+import { PERMISSIONS, ROLE_IDS, HOSPITAL_ROLE_IDS, can, permissionsFor, SECTION_PERMISSION } from '../domain/rbac.js';
 
-test('three roles only', () => {
-  assert.deepEqual(ROLE_IDS, ['admin', 'staff', 'patient']);
+const HOSPITAL_PERMISSIONS = Object.keys(PERMISSIONS).filter((p) => !p.startsWith('member:'));
+
+test('the hospital has three roles only; members are a separate personal role', () => {
+  assert.deepEqual(HOSPITAL_ROLE_IDS, ['admin', 'staff', 'patient']);
+  assert.deepEqual(ROLE_IDS, ['admin', 'staff', 'patient', 'member']);
   for (const roles of Object.values(PERMISSIONS)) for (const r of roles) assert.ok(ROLE_IDS.includes(r));
+  for (const p of HOSPITAL_PERMISSIONS) for (const r of PERMISSIONS[p]) assert.ok(HOSPITAL_ROLE_IDS.includes(r), `${p} is hospital-only`);
 });
 
-test('admin holds every permission (controls everything)', () => {
-  assert.deepEqual(permissionsFor('admin').sort(), Object.keys(PERMISSIONS).sort());
+test('admin holds every hospital permission (controls the hospital), but not the member space', () => {
+  assert.deepEqual(permissionsFor('admin').sort(), HOSPITAL_PERMISSIONS.sort());
+  assert.ok(!can('admin', 'member:own'));
+});
+
+test('members hold only their own member space; no hospital role reaches it', () => {
+  assert.deepEqual(permissionsFor('member'), ['member:own']);
+  for (const r of HOSPITAL_ROLE_IDS) assert.ok(!can(r, 'member:own'), r);
 });
 
 test('staff run meal service but cannot make clinical decisions or manage access', () => {

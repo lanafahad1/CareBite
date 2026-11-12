@@ -6,7 +6,7 @@ import assert from 'node:assert/strict';
 import pg from 'pg';
 import { ensureSchema, createPgStore } from '../domain/pg-store.js';
 import { createService } from '../domain/service.js';
-import { seedCatalog, seedHospitalDemo, linkDemoAccounts, DEMO_ACCOUNTS } from '../domain/demo-data.js';
+import { seedCatalog, seedHospitalDemo, linkDemoAccounts, seedMemberDemo, DEMO_ACCOUNTS } from '../domain/demo-data.js';
 import { addDays } from '../domain/dates.js';
 
 const url = process.env.TEST_DATABASE_URL;
@@ -31,6 +31,7 @@ function dump(repo) {
     users: repo.listUsers(), patients, entries: repo.listEntries(), intake: repo.listIntake(), requests: repo.listRequests(),
     audit: patients.map((p) => repo.listAudit({ patientId: p.id, limit: 40 })), menuAudit: repo.listAudit({ scope: 'menu.', limit: 15 }),
     catalog: repo.getCatalogData(), menu: repo.getMenu(),
+    memberDocs: repo.listUsers().map((u) => repo.listMemberUserDocs(u.id)),
   };
 }
 
@@ -95,6 +96,35 @@ test('workflow changes persist and match the values returned at the time', { ski
   assert.equal(loaded.catalog.meals[0].available, false);
 });
 
+test('member documents (profile, favourites, diary) round-trip and are removed with the account', { skip }, async () => {
+  const store = createPgStore(pool);
+  const member = { id: 'u-sara.member', role: 'member', status: 'active', name: 'Sara' };
+  const written = await store.write((repo) => {
+    const service = createService({ repo });
+    seedMemberDemo({ repo, service, today: service.today() });
+    service.saveMemberProfile(member, { allergies: { status: 'recorded', confirmed: ['peanut'], uncoded: ['dragon fruit'] }, preferences: { cuisines: ['Saudi'], preferredPortion: 'small' }, appetite: 'fair' });
+    const e = service.addMemberLog(member, { date: service.today(), period: 'lunch', name: 'Lentil soup “home”', kcal: 250, amount: 'some', reasons: ['portion-too-large'] }).entry;
+    service.updateMemberLog(member, e.id, { amount: 'most' });
+    return { dump: dump(repo), day: service.getMemberDay(member, {}), meals: service.mealsForYou(member, { period: 'lunch' }) };
+  });
+  const loaded = await store.read();
+  assert.deepEqual(dump(loaded), written.dump);
+  const service = createService({ repo: loaded });
+  assert.deepEqual(service.getMemberDay(member, {}), written.day);
+  assert.deepEqual(service.mealsForYou(member, { period: 'lunch' }), written.meals);
+  const { rows } = await pool.query(`SELECT kind, COUNT(*)::int AS n FROM MemberDocs WHERE user_id = 'u-sara.member' GROUP BY kind ORDER BY kind`);
+  assert.deepEqual(rows.map((r) => r.kind), ['favorites', 'log', 'profile']);
+  assert.equal(rows.find((r) => r.kind === 'profile').n, 1);
+  await store.write((repo) => repo.deleteMemberUserDocs('u-sara.member'));
+  assert.equal((await pool.query(`SELECT COUNT(*)::int AS n FROM MemberDocs WHERE user_id = 'u-sara.member'`)).rows[0].n, 0);
+  await store.write((repo) => { const service = createService({ repo }); seedMemberDemo({ repo, service, today: service.today() }); });
+});
+
+test('catalogue-only snapshots cannot reach member documents', { skip }, async () => {
+  const repo = await createPgStore(pool).read({ hospital: false });
+  assert.throws(() => repo.listMemberUserDocs('u-sara.member'), /only the menu catalogue/);
+});
+
 test('a failed operation saves nothing', { skip }, async () => {
   const store = createPgStore(pool);
   const before = dump(await store.read());
@@ -145,6 +175,7 @@ test('resetting the demonstration hospital empties and re-seeds it', { skip }, a
     return dump(repo);
   });
   assert.deepEqual(dump(await store.read()), written);
+  assert.ok(written.memberDocs.flat().length > 0, 'member documents are kept by the hospital reset');
   const old = await pool.query('SELECT COUNT(*)::int AS n FROM AuditLog WHERE id = 999999');
   assert.equal(old.rows[0].n, 0, 'audit rows outside the snapshot window are removed too');
 });

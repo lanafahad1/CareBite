@@ -111,7 +111,7 @@ export function SessionsCard({ shared = false }: { shared?: boolean }) {
                     <b className="font-display font-semibold text-heading">{d.label}</b>
                     {current ? <Badge variant="ok">This device</Badge> : null}
                   </p>
-                  <p className="text-sm text-muted-foreground">IP address: {s.ipAddress || 'not recorded'}</p>
+                  <p className="text-sm text-muted-foreground [overflow-wrap:anywhere]">IP address: {s.ipAddress || 'not recorded'}</p>
                   <p className="text-sm text-muted-foreground">Signed in {formatDateTime(iso(s.createdAt))} · expires {formatDateTime(iso(s.expiresAt))}</p>
                   {s.userAgent ? <p className="truncate text-xs text-muted-foreground" title={s.userAgent}>{s.userAgent}</p> : null}
                 </div>

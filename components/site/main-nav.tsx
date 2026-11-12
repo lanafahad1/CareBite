@@ -60,7 +60,7 @@ export function MainNav({ nav, more, viewer, home, logo }: { nav: Item[]; more: 
         <div className="ml-auto flex items-center gap-2">
           {viewer ? (
             <>
-              <span className={cn('hidden rounded-full px-2.5 py-1 text-xs font-extrabold tracking-wide sm:inline', viewer.role === 'admin' ? 'bg-warning-soft text-warning' : viewer.role === 'patient' ? 'bg-rose text-rose-ink' : 'bg-mint text-heading')}>{viewer.roleLabel}</span>
+              <span className={cn('hidden rounded-full px-2.5 py-1 text-xs font-extrabold tracking-wide sm:inline', viewer.role === 'admin' ? 'bg-warning-soft text-warning' : viewer.role === 'patient' || viewer.role === 'member' ? 'bg-rose text-rose-ink' : 'bg-mint text-heading')}>{viewer.roleLabel}</span>
               <DropdownMenu>
                 <DropdownMenuTrigger aria-label={`Account menu for ${viewer.username}`} className="grid size-10 place-items-center rounded-full bg-pink font-display text-sm font-semibold text-rose-ink hover:bg-pink-deep">{initials}</DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-64">

@@ -50,7 +50,7 @@ export function AuthShell({ mode, next, children }: { mode: 'login' | 'register'
           <p className="text-muted-foreground">
             {isLogin
               ? 'Use your username or the email you registered with.'
-              : 'CareBite is managed by the hospital. Patients join with a one-time link code from the nutrition team; staff ask for access, which an admin approves.'}
+              : 'Join as a member to find meals that fit you and waste less. In the demonstration hospital, patients join with a one-time link code and staff ask for access, which an admin approves.'}
           </p>
         </div>
         {children}
@@ -82,7 +82,8 @@ function AuthAside({ next }: { next: string | null }) {
       <section aria-labelledby="protect-h" className="flex flex-col gap-3 rounded-xl border border-border bg-card p-5 sm:p-6">
         <h2 id="protect-h" className="flex items-center gap-2 text-lg"><Lock aria-hidden className="size-5 text-sage-deep" />How accounts are protected</h2>
         <ul className="flex list-disc flex-col gap-1.5 pl-5 text-sm">
-          <li>Three roles: patients reach only their own meals; staff run daily meal service; admins control everything, including clinical information and staff access.</li>
+          <li>Three hospital roles: patients reach only their own meals; staff run daily meal service; admins control everything, including clinical information and staff access.</li>
+          <li>Members are personal accounts outside the hospital. Their food profile and diary are private: hospital staff cannot see them.</li>
           <li>Staff roles are assigned by an admin, never chosen at sign-up.</li>
           <li>Only an admin can change diet orders, allergies or medical restrictions. Patients send a request instead.</li>
           <li>Passwords are hashed with scrypt; sessions use an HttpOnly cookie that page scripts cannot read.</li>

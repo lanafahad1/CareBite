@@ -3,7 +3,7 @@
 // object). It is NOT a secure store.
 
 const EMPTY = () => ({
-  seq: 1, users: {}, patients: {}, entries: [], intake: [], requests: [], audit: [],
+  seq: 1, users: {}, patients: {}, entries: [], intake: [], requests: [], audit: [], memberDocs: [],
   catalog: { ingredients: {}, dishes: {}, meals: {}, menu: { cycle: Array.from({ length: 7 }, () => ({})), dates: {} } },
 });
 
@@ -103,6 +103,18 @@ export function createMemoryRepo(storage = null, key = 'carebite-hospital-demo-v
     listAudit({ patientId = null, scope = null, limit = 50 } = {}) {
       return clone(db.audit.filter((a) => (!patientId || a.patientId === String(patientId)) && (!scope || a.action.startsWith(scope))).slice(-limit).reverse());
     },
+    // ---- member space documents
+    listMemberUserDocs(userId, kind = null) { return clone(db.memberDocs.filter((d) => d.userId === String(userId) && (!kind || d.kind === kind))); },
+    getMemberUserDoc(docId) { return clone(db.memberDocs.find((d) => d.id === String(docId)) ?? null); },
+    saveMemberUserDoc(rec) {
+      const r = { ...clone(rec), userId: String(rec.userId), updatedAt: rec.updatedAt ?? new Date().toISOString() };
+      const i = r.id != null ? db.memberDocs.findIndex((d) => d.id === String(r.id)) : -1;
+      if (i >= 0) db.memberDocs[i] = { ...r, id: db.memberDocs[i].id }; else db.memberDocs.push({ ...r, id: id() });
+      persist();
+      return clone(i >= 0 ? db.memberDocs[i] : db.memberDocs.at(-1));
+    },
+    deleteMemberUserDoc(docId) { db.memberDocs = db.memberDocs.filter((d) => d.id !== String(docId)); persist(); },
+    deleteMemberUserDocs(userId) { db.memberDocs = db.memberDocs.filter((d) => d.userId !== String(userId)); persist(); },
     // ---- demo helpers
     clearHospitalData() {
       db.patients = {}; db.entries = []; db.intake = []; db.requests = []; db.audit = [];

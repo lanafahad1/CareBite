@@ -38,13 +38,14 @@ Hospital meals that do not fit a patient (wrong diet, an allergen, a disliked fo
 
 ## Features by role
 
-CareBite has three roles. Every action is authorized by role-based access control (RBAC).
+CareBite has three hospital roles, plus personal **member** accounts for people who are not in hospital. Every action is authorized by role-based access control (RBAC).
 
 | Role | What they do |
 | --- | --- |
 | **Patient** | **My Meals**: the next meal and what to do next, approved options with "Why this meal?", choosing a meal, the day and week view, and feedback after delivery. **My Requests**: requests and the team's responses. **My Food Profile**: preferences and appetite, and reporting a diet or allergy change for review. |
 | **Staff** | **Patient overview** and nutrition profiles. Offering and confirming eligible meals, recording a patient's choice, cancelling and handling held meals. **Kitchen summary**: quantities, tray tickets, prepared → delivered, and change alerts. Also the meal schedule, recording intake (including weighed waste), editing the menu, answering requests, and admission and discharge. |
 | **Admin** | Everything staff can do, plus: clinical information (diet orders, allergies, restrictions), approving meals that need review, verifying menu dietary information, creating and deleting records, and approving staff access and assigning roles. |
+| **Member** | A personal account outside the hospital (sign up as "Member"). **Meals for you**: meals from the CareBite menu screened by the same engine against a self-reported food profile, with the suggested portion, "Why this fits you" and favourites. **My day**: a food diary with how much was eaten, why food was left, calories eaten and a "Your week" card; "too big" portions make the next suggestions smaller. **My food profile**: allergies, intolerances, foods you like or avoid, cuisines, appetite and portion (self-reported; no diet orders). Member data is private: hospital roles cannot see it. |
 
 The meal workflow is **Options offered → Patient choice submitted → Confirmed by nutrition team → Prepared → Delivered**. Delivered does not mean eaten: intake is recorded separately.
 
@@ -87,8 +88,8 @@ On first start the tables are created in that database and seeded with:
 | --- | --- |
 | `npm run dev` | Development server. |
 | `npm run build` then `npm start` | Production build and server. |
-| `npm test` | Domain, RBAC and password-policy tests (34). The 8 Postgres tests also run when `TEST_DATABASE_URL` points to a disposable database (its tables are dropped). |
-| `npm run test:e2e` | Cross-role browser test, 64 checks. Run it against a freshly seeded server; set `CHROMIUM=/path/to/chrome` if Playwright's browser is not installed. |
+| `npm test` | Domain, RBAC, member-space and password-policy tests (44). The 10 Postgres tests also run when `TEST_DATABASE_URL` points to a disposable database (its tables are dropped). |
+| `npm run test:e2e` | Cross-role browser test, 88 checks (including the member space). Run it against a freshly seeded server; set `CHROMIUM=/path/to/chrome` if Playwright's browser is not installed. |
 | `npm run typecheck` | TypeScript check. |
 | `npm run reset-db -- --yes` | Delete every CareBite table in the `DATABASE_URL` database; the next start creates and seeds them again. To reset only the demonstration hospital, sign in as `admin.demo` and use the reset in Settings. |
 
@@ -105,6 +106,7 @@ All demo accounts use the password `CareBite#2026`, and the login page has one-c
 | `admin.demo` | Admin |
 | `staff.demo` | Staff |
 | `noura.1001`, `khalid.1004` | Patients CB-1001 and CB-1004 |
+| `sara.member` | Member (sesame allergy, lactose intolerance, a few days of food diary) |
 
 `layla.applicant` is a pending staff access request that `admin.demo` can approve.
 

@@ -51,6 +51,18 @@ export function createApiRoutes(service) {
     r('GET', '/api/manage/menu', ({ user, query }) => service.getMenuPlan(user, { from: query.from || undefined })),
     r('POST', '/api/manage/menu', ({ user, body }) => service.setMenu(user, body)),
 
+    // Member space: the signed-in member's own data only (403 for every other role).
+    r('GET', '/api/member/profile', ({ user }) => service.getMemberProfile(user)),
+    r('PATCH', '/api/member/profile', ({ user, body }) => service.saveMemberProfile(user, body)),
+    r('GET', '/api/member/meals', ({ user, query }) => service.mealsForYou(user, { period: query.period || null })),
+    r('POST', '/api/member/favorites/:mealId', ({ user, params }) => service.setFavorite(user, params.mealId, true)),
+    r('DELETE', '/api/member/favorites/:mealId', ({ user, params }) => service.setFavorite(user, params.mealId, false)),
+    r('GET', '/api/member/day', ({ user, query }) => service.getMemberDay(user, { date: query.date || undefined })),
+    r('POST', '/api/member/log', ({ user, body }) => service.addMemberLog(user, body)),
+    r('PATCH', '/api/member/log/:id', ({ user, params, body }) => service.updateMemberLog(user, params.id, body)),
+    r('DELETE', '/api/member/log/:id', ({ user, params }) => service.deleteMemberLog(user, params.id)),
+    r('GET', '/api/member/week', ({ user, query }) => service.getMemberWeek(user, { date: query.date || undefined })),
+
     r('GET', '/api/admin/staff', ({ user }) => service.listStaff(user)),
     r('POST', '/api/admin/staff/:id', ({ user, params, body }) => service.decideStaff(user, params.id, body)),
   ];

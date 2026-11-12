@@ -9,7 +9,7 @@ import { getRuntime } from './runtime';
 import { can, permissionsFor } from '@/domain/rbac.js';
 import { ROLES, ACCOUNT_STATUS, label } from '@/domain/constants.js';
 
-export type Role = 'admin' | 'staff' | 'patient';
+export type Role = 'admin' | 'staff' | 'patient' | 'member';
 export type Actor = {
   id: string; role: Role | null; status: string; name: string; username: string; email: string;
   patientId: string | null; isDemo: boolean; requestedRole: string | null; decisionNote: string | null; createdAt: string; emailVerified: boolean;
@@ -75,5 +75,5 @@ export async function requirePermission(permission: string, next: string): Promi
 export function homeFor(actor: Pick<Actor, 'role' | 'status'> | null): string {
   if (!actor) return '/';
   if (actor.status !== 'active') return '/access-pending';
-  return actor.role === 'patient' ? '/my-meals' : '/patients';
+  return actor.role === 'patient' ? '/my-meals' : actor.role === 'member' ? '/for-you' : '/patients';
 }

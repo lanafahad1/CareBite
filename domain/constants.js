@@ -6,6 +6,7 @@ export const ROLES = [
   { id: 'admin', label: 'Admin', staff: true, hint: 'Controls the whole platform: staff access and roles, diet orders, allergies and restrictions, approving meals that need review, verifying menu information and deleting records, plus every staff task. In a hospital this role belongs to the clinical dietitian or nutrition lead.' },
   { id: 'staff', label: 'Staff', staff: true, hint: 'Runs daily meal service: offers and confirms eligible meals, records choices, intake and admission status, prepares and delivers trays, maintains the menu and answers patient requests. Cannot change clinical information or approve meals that need review.' },
   { id: 'patient', label: 'Patient', staff: false, hint: 'Sees their own meals and profile; chooses meals, updates preferences, appetite and feedback, and sends requests.' },
+  { id: 'member', label: 'Member', staff: false, hint: 'A personal account outside the hospital: a self-reported food profile, meals from the CareBite menu that fit it, and a simple food diary. No access to hospital data.' },
 ];
 /** Roles an administrator can assign to an approved staff account. */
 export const ASSIGNABLE_STAFF_ROLES = ['staff', 'admin'];
@@ -185,6 +186,29 @@ export const REFUSAL_REASONS = [
   { id: 'temperature', label: 'Temperature (too cold or too hot)' },
   { id: 'not-preferred', label: 'Not what I wanted to eat' },
   { id: 'other', label: 'Other reason' },
+];
+
+// Member space (personal accounts): the same coded values in plain, friendly words.
+/** Leftover reasons members can give (a subset of the REFUSAL_REASONS ids). */
+export const MEMBER_REASONS = [
+  { id: 'portion-too-large', label: 'Too big' },
+  { id: 'portion-too-small', label: 'Too small' },
+  { id: 'taste', label: 'Didn’t like it' },
+  { id: 'low-appetite', label: 'Not hungry' },
+  { id: 'other', label: 'Something else' },
+];
+/** How much was eaten (same ids and shares as INTAKE_AMOUNTS). */
+export const MEMBER_AMOUNTS = [
+  { id: 'none', label: 'None', share: 0 },
+  { id: 'some', label: 'Some', hint: 'about a quarter', share: 0.25 },
+  { id: 'most', label: 'Most', hint: 'about three quarters', share: 0.75 },
+  { id: 'all', label: 'All of it', share: 1 },
+];
+/** Usual appetite (same ids as APPETITE). */
+export const MEMBER_APPETITE = [
+  { id: 'good', label: 'Good' },
+  { id: 'fair', label: 'Smaller than usual' },
+  { id: 'poor', label: 'Very small' },
 ];
 
 export const REQUEST_TYPES = [

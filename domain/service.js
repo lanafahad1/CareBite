@@ -9,6 +9,7 @@
 //   staff      — daily meal service: preferences, appetite, admission status, offers, confirmations,
 //                preparation and delivery, intake, menu maintenance, non-clinical requests
 //   patient    — their own profile, approved options, selections, feedback and requests
+//   member     — a personal account outside the hospital: only the member space (member.js)
 // A staff account waiting for approval has no role and can do nothing here.
 //
 // This file holds the shared context and the patient record, admission,
@@ -32,6 +33,7 @@ import { LOCAL_PRODUCTION, LOCAL_PRODUCTION_SOURCES } from '../data/local-produc
 import { SFCT_LIBRARY, SFCT_META } from '../data/sfct-dishes.js';
 import { createWorkflow } from './workflow.js';
 import { createMenuAdmin } from './menu-admin.js';
+import { createMember } from './member.js';
 
 export class ServiceError extends Error {
   constructor(status, code, message, details) {
@@ -180,6 +182,9 @@ export function createService({ repo, sfct = SFCT_LIBRARY, now = () => new Date(
   };
   const workflow = createWorkflow(ctx);
   const menuAdmin = createMenuAdmin(ctx, workflow);
+  const member = createMember(ctx);
+  /** Hospital staff accounts (and pending requests): never patients or members. */
+  const isStaffAccount = (u) => u.role !== 'patient' && u.role !== 'member';
 
   // ------------------------------------------------------------ patients
   function listPatients(actor, { date = today(), ward = null, include = 'admitted' } = {}) {
@@ -631,7 +636,7 @@ export function createService({ repo, sfct = SFCT_LIBRARY, now = () => new Date(
   });
   function listStaff(actor) {
     requirePermission(actor, 'staff:manage', 'Only an admin can manage staff access.');
-    const users = repo.listUsers().filter((u) => u.role !== 'patient');
+    const users = repo.listUsers().filter(isStaffAccount);
     return {
       pending: users.filter((u) => u.status === 'pending').sort((a, b) => (a.createdAt ?? '').localeCompare(b.createdAt ?? '')).map(staffView),
       staff: users.filter((u) => u.status !== 'pending').sort((a, b) => (a.role ?? '').localeCompare(b.role ?? '') || a.username.localeCompare(b.username)).map(staffView),
@@ -641,7 +646,7 @@ export function createService({ repo, sfct = SFCT_LIBRARY, now = () => new Date(
   function decideStaff(actor, userId, input = {}) {
     requirePermission(actor, 'staff:manage', 'Only an admin can manage staff access.');
     const u = repo.getUserById(String(userId));
-    if (!u || u.role === 'patient') throw new ServiceError(404, 'user_not_found', 'That staff account does not exist.');
+    if (!u || !isStaffAccount(u)) throw new ServiceError(404, 'user_not_found', 'That staff account does not exist.');
     if (u.id === actor.id) deny('You cannot change your own access.');
     if (u.isDemo) deny('Shared demonstration accounts cannot be changed.');
     const decision = input.decision;
@@ -706,6 +711,7 @@ export function createService({ repo, sfct = SFCT_LIBRARY, now = () => new Date(
       out.intakeAndFeedback = repo.listIntake({ patientId: p.id }).filter((r) => r.source === 'patient');
       out.requests = repo.listRequests({ patientId: p.id });
     }
+    if (actor.role === 'member') Object.assign(out, member.exportMember(actor.id));
     return out;
   }
 
@@ -714,7 +720,7 @@ export function createService({ repo, sfct = SFCT_LIBRARY, now = () => new Date(
     createLinkCode, checkLinkCode, redeemLinkCode, claimLinkCode, recordAccountLink, unlinkAccounts,
     recordIntake, createRequest, listRequests, listPatientRequests, resolveRequest,
     getDashboard, getReference, exportData, listStaff, decideStaff,
-    ...workflow.api, ...menuAdmin.api,
+    ...workflow.api, ...menuAdmin.api, ...member.api,
     reloadCatalog, catalog, menu, today,
   };
 }
