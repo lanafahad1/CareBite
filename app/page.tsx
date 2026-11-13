@@ -30,8 +30,8 @@ export default async function Home() {
         <div className="container-page grid items-center gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.05fr)] lg:gap-14">
           <div className="flex flex-col gap-5">
             <span className="eyebrow">Personalized Hospital Meal Recommendation Platform</span>
-            <h1 className="text-display">Hospital meals that <em className="not-italic text-rose-ink">fit</em> every patient.</h1>
-            <p className="text-[1.15rem]">CareBite helps hospital nutrition teams recommend meals that match each patient’s prescribed diet, medical restrictions, food allergies, personal preferences and appetite.</p>
+            <h1 className="text-display">Care in <em className="not-italic text-rose-ink">every bite</em>.</h1>
+            <p className="text-[1.15rem]">Hospital meals matched to each patient’s diet, allergies, tastes and appetite.</p>
             <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap">
               <Link href={start} className={buttonVariants({ size: 'lg' })}>{actor ? <ChevronRight aria-hidden /> : <Sparkles aria-hidden />}{startLabel}</Link>
               <Link href="/how-it-works" className={buttonVariants({ variant: 'outline', size: 'lg' })}>How It Works</Link>
