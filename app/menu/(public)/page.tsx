@@ -6,11 +6,11 @@ import { SITE_URL } from '@/lib/site';
 import { JsonLd } from '@/components/public/json-ld';
 import { PERIODS } from '@/domain/constants.js';
 import { ACTIVE_DIET_CATEGORIES } from '@/domain/rules.js';
-import { MenuView, type MenuFilters } from './menu-view';
+import { MenuView, type MenuFilters, type MenuMode } from './menu-view';
 
 export const metadata = publicMetadata({
   title: 'Hospital Meal Menu',
-  description: 'The demonstration hospital’s daily menu by meal period: complete meals and individual dishes with components, portions, SFDA nutrition values where they exist, the 14 SFDA allergens and fit with each hospital diet category.',
+  description: 'Every meal from the demonstration hospital’s kitchen, or the menu for one date, by meal period: complete meals and individual dishes with components, portions, SFDA nutrition values where they exist, the 14 SFDA allergens and fit with each hospital diet category.',
   path: '/menu',
 });
 
@@ -23,17 +23,20 @@ export default async function MenuPage({ searchParams }: Props) {
   const type = ['single', 'complete'].includes(param(sp.type) ?? '') ? param(sp.type)! : '';
   const q = (param(sp.q) ?? '').slice(0, 60);
   const date = isoDate(param(sp.date));
+  // "All meals" (the whole catalogue) unless the link asks for a date's menu.
+  const view: MenuMode = param(sp.view) === 'date' || (param(sp.view) !== 'all' && param(sp.date)) ? 'date' : 'all';
+  // Every period is loaded at once; the period is the open tab.
   const [initial, viewer, today] = await Promise.all([
-    publicCall((s) => s.getMenu({ date, period: period || null, q, diet: diet || null, type: type || null })),
+    publicCall((s) => s.getMenu({ view, date, q, diet: diet || null, type: type || null })),
     getViewer(),
     publicCall((s) => s.today() as string),
   ]);
-  const filters: MenuFilters = { date: initial.date, period, q, diet, type };
+  const filters: MenuFilters = { view, date: initial.date, period, q, diet, type };
   type Item = { id: string; name: string };
   const meals = [...new Map<string, Item>(initial.periods.flatMap((p: { meals: Item[] }) => p.meals).map((m: Item) => [m.id, m] as [string, Item])).values()];
   const list = {
-    '@context': 'https://schema.org', '@type': 'ItemList', name: `Hospital meal menu, ${initial.weekday} ${initial.date}`, numberOfItems: meals.length,
-    itemListElement: meals.slice(0, 50).map((m: { id: string; name: string }, i: number) => ({ '@type': 'ListItem', position: i + 1, url: `${SITE_URL}/meal/${m.id}`, name: m.name })),
+    '@context': 'https://schema.org', '@type': 'ItemList', name: view === 'all' ? 'Hospital meal menu, all meals' : `Hospital meal menu, ${initial.weekday} ${initial.date}`, numberOfItems: meals.length,
+    itemListElement: meals.slice(0, 60).map((m: { id: string; name: string }, i: number) => ({ '@type': 'ListItem', position: i + 1, url: `${SITE_URL}/meal/${m.id}`, name: m.name })),
   };
   return (
     <>

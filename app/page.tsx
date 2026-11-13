@@ -1,27 +1,55 @@
 import type { Metadata } from 'next';
+import type { ReactNode } from 'react';
 import Link from 'next/link';
-import { ChevronRight, Sparkles, Shield, HeartPulse, Leaf, User, Users, Lock, Scale } from 'lucide-react';
+import { ChevronRight, Sparkles, Shield, HeartPulse, Leaf, User, Hospital, ClipboardList, ShieldCheck, Utensils, type LucideIcon } from 'lucide-react';
 import { publicMetadata } from '@/components/public/seo';
 import { SITE_NAME, SITE_DESCRIPTION } from '@/lib/site';
-import { heroArt, botanical } from '@/lib/art.js';
+import { heroArt } from '@/lib/art.js';
 import { getActor, homeFor } from '@/lib/server/session';
 import { publicCall } from '@/lib/server/data';
 import { buttonVariants } from '@/components/ui/button';
-import { Band, SectionHead, CheckList, CheckItem, Benefit, Journey, CtaBand, Panel } from '@/components/public/blocks';
+import { Band, CtaBand } from '@/components/public/blocks';
 import { MEDICAL_RULES, SAFETY_RULES, ACTIVE_DIET_CATEGORIES } from '@/domain/rules.js';
-import { LOCAL_PRODUCTION } from '@/data/local-production.js';
 
 const HOME_TITLE = `${SITE_NAME}: Personalized Hospital Meals`;
 const base = publicMetadata({ description: SITE_DESCRIPTION, path: '/' });
 export const metadata: Metadata = { ...base, title: { absolute: HOME_TITLE }, openGraph: { ...base.openGraph, title: HOME_TITLE }, twitter: { ...base.twitter, title: HOME_TITLE } };
 
-type Diet = { id: string; code: string; label: string; description: string };
+/** The core journey in three plain steps; the full version is on How It Works. */
+const STEPS: [LucideIcon, string, string][] = [
+  [ClipboardList, 'Record what each person needs', 'Diet order, allergies, tastes and appetite, entered by the care team and the patient.'],
+  [ShieldCheck, 'Screen every meal, safety first', 'Conflicts are excluded and anything uncertain goes to an admin for review.'],
+  [Utensils, 'Choose, eat, and learn', 'Patients pick from ranked, explained options; feedback shapes the next meal.'],
+];
+
+const AGENCIES: [string, string][] = [
+  ['MOH', 'Ministry of Health'],
+  ['SNDC', 'Saudi National Diabetes Center'],
+  ['SFDA', 'Saudi Food & Drug Authority'],
+  ['MEWA', 'Ministry of Environment, Water and Agriculture'],
+  ['GFSA', 'General Food Security Authority'],
+];
+
+function AudienceCard({ icon: Icon, title, tone, action, children }: { icon: LucideIcon; title: string; tone: 'mint' | 'rose'; action: ReactNode; children: ReactNode }) {
+  return (
+    <div className="flex flex-col gap-3 rounded-xl border border-border bg-card p-5 sm:p-6">
+      <div className="flex items-center gap-3">
+        <span aria-hidden className={`grid size-11 shrink-0 place-items-center rounded-full ${tone === 'mint' ? 'bg-mint text-heading' : 'bg-rose text-rose-ink'}`}><Icon className="size-5" /></span>
+        <h3 className="text-[1.2rem]">{title}</h3>
+      </div>
+      <div className="flex flex-1 flex-col gap-2">{children}</div>
+      {action}
+    </div>
+  );
+}
 
 export default async function Home() {
   const actor = await getActor();
   const start = actor ? homeFor(actor) : '/login';
   const startLabel = actor ? 'Go to my start page' : 'Try the demonstration hospital';
   const mealCount = await publicCall((s) => s.catalog().list.length as number);
+  const hospital = actor?.role === 'member' ? null : { href: start, label: startLabel };
+  const member = !actor ? { href: '/register', label: 'Create my account' } : actor.role === 'member' ? { href: start, label: 'Go to my meals' } : null;
   const counts = { meals: mealCount, diets: ACTIVE_DIET_CATEGORIES.length, rules: MEDICAL_RULES.length + SAFETY_RULES.length };
 
   return (
@@ -52,110 +80,67 @@ export default async function Home() {
         </div>
       </section>
 
-      <Band tone="white" aria-labelledby="ov">
-        <div className="container-page grid gap-8 lg:grid-cols-2 lg:items-center">
-          <div className="flex flex-col gap-4">
-            <span className="eyebrow">Project overview</span>
-            <h2 id="ov" className="text-[1.6rem] leading-tight sm:text-[2rem]">Connecting patient information with the hospital’s meals</h2>
-            <p className="text-[1.1rem]">The platform connects structured patient health information with the hospital’s available meals and nutritional data. It screens meals against recorded dietary requirements, then ranks eligible options according to the patient’s preferences and appetite.</p>
-            <p className="text-muted-foreground">The goal is to support appropriate nutritional intake, reduce meal rejection and food waste, and improve patient satisfaction during hospitalization. Admins define and review dietary requirements; the platform supports their decisions.</p>
-          </div>
-          <Panel tone="mint">
-            <CheckList>
-              <CheckItem title="Preferences never override restrictions.">A favourite food that conflicts with an allergy or the diet order is still excluded.</CheckItem>
-              <CheckItem title="No suitable meal? Flag it.">CareBite never relaxes requirements; it flags the case for the nutrition team.</CheckItem>
-              <CheckItem title="Incomplete information goes to an admin.">Unassessed allergies, uncoded entries, texture-modified diets and missing nutrient data are marked for review.</CheckItem>
-              <CheckItem title="Every suggestion explains itself.">“Why This Meal?” lists the checks passed, the preferences matched and the suggested portion.</CheckItem>
-            </CheckList>
-          </Panel>
-        </div>
-      </Band>
-
-      <Band aria-labelledby="jr">
+      <Band tone="white" aria-labelledby="steps-h" className="py-10 sm:py-14 lg:py-16">
         <div className="container-page">
-          <SectionHead center eyebrow="Core user journey" title="From the diet order to the next meal decision" id="jr" />
-          <Journey />
-          <div className="mt-8 flex justify-center">
-            <Link href="/how-it-works" className={buttonVariants({ variant: 'outline' })}>See the screening rules in detail <ChevronRight aria-hidden /></Link>
+          <div className="mb-6 flex flex-wrap items-end justify-between gap-3">
+            <h2 id="steps-h" className="text-[1.5rem] leading-tight sm:text-[1.9rem]">How it works, in three steps</h2>
+            <Link href="/how-it-works" className="inline-flex min-h-11 items-center gap-1 font-semibold">How It Works <ChevronRight className="size-4" aria-hidden /></Link>
           </div>
+          <ol aria-labelledby="steps-h" className="grid gap-3 md:grid-cols-3">
+            {STEPS.map(([Icon, title, text], i) => (
+              <li key={title} className="flex items-start gap-3.5 rounded-[18px] border border-border bg-background p-4 sm:p-5">
+                <span aria-hidden className="grid size-11 shrink-0 place-items-center rounded-full bg-mint text-heading"><Icon className="size-5" /></span>
+                <span className="min-w-0">
+                  <b className="block font-display text-[1.05rem] font-medium text-heading"><span className="sr-only">Step {i + 1}: </span>{title}</b>
+                  <span className="text-[.95rem] text-muted-foreground">{text}</span>
+                </span>
+              </li>
+            ))}
+          </ol>
         </div>
       </Band>
 
-      <Band tone="white" aria-labelledby="rl">
+      <Band aria-labelledby="who-h" className="py-10 sm:py-14 lg:py-16">
         <div className="container-page">
-          <SectionHead eyebrow="Hospital management and patient participation" title="Managed by the hospital, with patients involved in their meals" id="rl">
-            <p>Each person sees only what their role needs. The nutrition team stays responsible for dietary oversight; patients have a voice in their daily meals.</p>
-          </SectionHead>
-          <div className="grid gap-4 md:grid-cols-3">
-            <Benefit icon={User} title="Patient">Views their meals, chooses from approved options, updates preferences and appetite, gives feedback and sends requests.</Benefit>
-            <Benefit icon={Users} title="Staff">Run daily meal service: offer approved options, confirm choices, prepare and deliver trays, record intake, keep the menu up to date and answer requests.</Benefit>
-            <Benefit icon={Lock} title="Admin">Controls the whole platform: diet orders, allergies and restrictions, meals that need review, menu verification, staff access, and every staff task.</Benefit>
-          </div>
-          <p className="mt-5 flex items-start gap-2 text-sm text-muted-foreground"><Lock className="mt-0.5 size-4 shrink-0 text-heading" aria-hidden />Changes to clinical dietary restrictions always require review by authorised healthcare staff.</p>
-        </div>
-      </Band>
-
-      <Band tone="blush" aria-labelledby="sa">
-        <div className="container-page grid gap-8 lg:grid-cols-2">
-          <div className="flex flex-col gap-4">
-            <span className="eyebrow">Saudi food and agriculture guidance</span>
-            <h2 id="sa" className="text-[1.6rem] leading-tight sm:text-[2rem]">Built on Saudi government guidance</h2>
-            <p>Every food and health rule in CareBite comes from Saudi government sources: the Ministry of Health and the Saudi National Diabetes Center for diets, the Saudi Food &amp; Drug Authority for food safety and nutrition, the Ministry of Environment, Water and Agriculture for local produce, and the General Food Security Authority for food security and food-waste reduction. Where no Saudi source sets a number, the admin sets it.</p>
-            <Link href="/sources" className={buttonVariants({ variant: 'outline', className: 'w-full sm:w-fit' })}>All sources and limitations <ChevronRight aria-hidden /></Link>
-          </div>
-          <div className="flex flex-col gap-3">
-            <Panel>
-              <h3 className="flex items-center gap-2 text-lg"><HeartPulse className="size-5" aria-hidden />Ministry of Health</h3>
-              <ul className="flex list-disc flex-col gap-1.5 pl-5 text-[.95rem]">
-                <li>Salt: no more than 5 g a day (2,000 mg sodium) sets the default limit for sodium-restricted, cardiac and renal diets.</li>
-                <li>Diabetes: no added sugar, regular meals and complex carbohydrates; the carbohydrate amount is set by the admin (Saudi Diabetes Clinical Practice Guidelines).</li>
-                <li>Kidney disease: reduced salt, with potassium and phosphorus limits set for the stage of disease. Gluten-free diets for coeliac patients, as MOH provides in hospitals.</li>
-              </ul>
-            </Panel>
-            <Panel>
-              <h3 className="flex items-center gap-2 text-lg"><Shield className="size-5" aria-hidden />SFDA</h3>
-              <ul className="flex list-disc flex-col gap-1.5 pl-5 text-[.95rem]">
-                <li>The 14 allergens food services must declare (SFDA.FD 56) are used for every allergy record and meal label.</li>
-                <li>Salt guidance (5 g a day) ranks lower-salt meals for everyone; SFDA’s “high in fibre” definition ranks meals for diabetes; meat and poultry are halal-certified (Saudi Halal Center).</li>
-                <li>Nutrition comes only from SFDA Saudi Food Composition Tables laboratory values, for the Saudi dishes the kitchen prepares to SFCT standard recipes. Nothing is estimated.</li>
-              </ul>
-            </Panel>
-            <Panel>
-              <h3 className="flex items-center gap-2 text-lg"><Leaf className="size-5" aria-hidden />MEWA</h3>
-              <p className="text-[.95rem]">Ingredients the Kingdom produces widely are highlighted on menus and the kitchen summary, supporting MEWA’s local-produce campaigns: dates {LOCAL_PRODUCTION.dates.selfSufficiency}%, dairy {LOCAL_PRODUCTION.dairy.selfSufficiency}%, table eggs {LOCAL_PRODUCTION.eggs.selfSufficiency}% self-sufficiency (2024).</p>
-            </Panel>
-            <Panel>
-              <h3 className="flex items-center gap-2 text-lg"><Scale className="size-5" aria-hidden />GFSA</h3>
-              <p className="text-[.95rem]">The General Food Security Authority (formerly the Saudi Grains Organization) leads the national programme to reduce food loss and waste; its field study estimated that a third (33.1%) of targeted food commodities are wasted each year. CareBite records reported leftovers and weighed plate waste for every meal so the hospital can act on avoidable waste.</p>
-            </Panel>
+          <h2 id="who-h" className="mb-6 text-[1.5rem] leading-tight sm:text-[1.9rem]">Who it’s for</h2>
+          <div className="grid gap-4 md:grid-cols-2">
+            <AudienceCard icon={Hospital} title="Hospital care" tone="mint"
+              action={hospital ? <Link href={hospital.href} className={buttonVariants({ className: 'w-full sm:w-fit' })}>{actor ? <ChevronRight aria-hidden /> : <Sparkles aria-hidden />}{hospital.label}</Link> : null}>
+              <p>Patients choose from approved meals, staff run the daily meal service, and admins set diet orders and review what needs a professional eye.</p>
+              <p className="text-sm text-muted-foreground">A fictional demonstration hospital: every patient and record is made up.</p>
+            </AudienceCard>
+            <AudienceCard icon={User} title="Member" tone="rose"
+              action={member ? <Link href={member.href} className={buttonVariants({ variant: 'outline', className: 'w-full sm:w-fit' })}>{member.label} <ChevronRight aria-hidden /></Link> : null}>
+              <p>For yourself, not in hospital: meals that fit you, a simple food diary for your day, and help to waste less.</p>
+              <p className="text-sm text-muted-foreground">You keep your own food profile. Nothing is shared with a hospital.</p>
+            </AudienceCard>
           </div>
         </div>
       </Band>
 
-      <Band tone="white" aria-labelledby="dc">
-        <div className="container-page">
-          <SectionHead eyebrow="Documented hospital diet categories" title="Every meal is checked against the diet order" id="dc" />
-          <ul className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {(ACTIVE_DIET_CATEGORIES as Diet[]).map((d, i) => (
-              <li key={d.id}>
-                <Link href={`/diets#${d.id}`} className="flex h-full flex-col gap-2 rounded-xl border border-border bg-card p-5 text-foreground no-underline transition-shadow hover:shadow-lift">
-                  <span aria-hidden className={`grid size-11 place-items-center rounded-[14px] font-mono text-[.8rem] font-bold ${i % 2 ? 'bg-mint text-heading' : 'bg-rose text-rose-ink'}`}>{d.code}</span>
-                  <b className="font-display text-[1.05rem] font-medium text-heading">{d.label} <span className="sr-only">(code {d.code})</span></b>
-                  <small className="text-[.9rem] text-muted-foreground">{d.description}</small>
-                </Link>
+      <Band tone="blush" aria-labelledby="sa" className="py-8 sm:py-12 lg:py-14">
+        <div className="container-page flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between lg:gap-10">
+          <div className="flex flex-col gap-2">
+            <h2 id="sa" className="text-[1.35rem] leading-tight sm:text-[1.6rem]">Built on Saudi government guidance</h2>
+            <p className="text-[.95rem] text-muted-foreground">Every food and health rule comes from a Saudi government source. Where none sets a number, the admin sets it.</p>
+          </div>
+          <ul aria-label="Saudi government sources" className="flex flex-wrap gap-2">
+            {AGENCIES.map(([abbr, name]) => (
+              <li key={abbr} className="inline-flex items-center gap-1.5 rounded-full border border-rose bg-card px-3 py-1.5 text-sm">
+                <b className="font-display font-semibold text-heading">{abbr}</b><span className="sr-only">, </span><span className="text-muted-foreground">{name}</span>
               </li>
             ))}
           </ul>
+          <Link href="/sources" className={buttonVariants({ variant: 'outline', className: 'w-full shrink-0 sm:w-fit' })}>All sources and limitations <ChevronRight aria-hidden /></Link>
         </div>
       </Band>
 
-      <Band className="pt-8 sm:pt-12">
+      <Band className="py-10 sm:py-14 lg:py-16">
         <div className="container-page">
           <CtaBand title="Explore the demonstration hospital"
             action={<Link href={start} className={buttonVariants({ size: 'lg' })}><Sparkles aria-hidden />{actor ? 'Go to my start page' : 'Choose a demo account'}</Link>}>
             <p>Log in as a patient, a staff member or an admin. Every patient and record is fictional.</p>
           </CtaBand>
-          <div className="mt-8 flex justify-center"><span className="w-40" dangerouslySetInnerHTML={{ __html: botanical('w-full h-auto') }} /></div>
         </div>
       </Band>
     </>

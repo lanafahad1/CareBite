@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
 import Link from 'next/link';
-import { Shield, HeartPulse, ShieldX, TriangleAlert, ChefHat, Flag, ListChecks, FlaskConical, ArrowUpDown, type LucideIcon } from 'lucide-react';
+import { Shield, ShieldX, TriangleAlert, ChefHat, Flag, ListChecks, FlaskConical, ArrowUpDown, type LucideIcon } from 'lucide-react';
 import { publicMetadata } from '@/components/public/seo';
 import { SITE_URL } from '@/lib/site';
 import { AboutNav } from '@/components/cb/misc';
@@ -9,6 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { Notice } from '@/components/ui/notice';
 import { Table, Th, Td } from '@/components/ui/table';
 import { ExtLink } from '@/components/public/blocks';
+import { FoldOut } from '@/components/public/fold-out';
 import { JsonLd } from '@/components/public/json-ld';
 import { DIET_CATEGORIES, DIET_SUPPORT, MEDICAL_RULES, SAFETY_RULES, INTAKE_FLAG_RULES, SOURCES, MEAL_SHARE, RULESET_VERSION, RULESET_REVIEW } from '@/domain/rules.js';
 import { ALLERGENS, PERIODS } from '@/domain/constants.js';
@@ -38,13 +39,8 @@ function SourceLinks({ ids }: { ids?: string[] }) {
   );
 }
 
-function Section({ id, title, children }: { id: string; title: string; children: ReactNode }) {
-  return (
-    <section id={id} aria-labelledby={`${id}-h`} className="flex scroll-mt-24 flex-col gap-4 border-t border-border pt-8 first:border-t-0 first:pt-0">
-      <h2 id={`${id}-h`} className="text-[1.5rem] sm:text-[1.75rem]">{title}</h2>
-      {children}
-    </section>
-  );
+function Section({ id, title, summary, children }: { id: string; title: string; summary: ReactNode; children: ReactNode }) {
+  return <FoldOut id={id} title={title} summary={summary}>{children}</FoldOut>;
 }
 
 function RuleCard({ r, outcome }: { r: any; outcome?: string }) {
@@ -83,13 +79,13 @@ export default function DietsPage() {
             {TOC.map(([id, l]) => <li key={id}><a href={`#${id}`} className="inline-flex min-h-9 items-center rounded-full border border-border bg-card px-3 py-1 text-sm font-semibold text-foreground no-underline hover:bg-mint hover:text-heading lg:w-full lg:rounded-[10px] lg:border-0 lg:bg-transparent">{l}</a></li>)}
           </ul>
         </nav>
-        <div className="flex min-w-0 flex-col gap-8">
-          <div className="flex flex-col gap-3">
-            <Notice tone="info" icon={<Shield aria-hidden />} title="Saudi rules">CareBite is used in Saudi Arabia, so every food and health rule is based on Saudi government guidance: the Ministry of Health, the Saudi National Diabetes Center, the Saudi Food &amp; Drug Authority, the Ministry of Environment, Water and Agriculture and the General Food Security Authority.</Notice>
-            <Notice tone="rose" icon={<HeartPulse aria-hidden />} title="Governance">Reviewed by: {RULESET_REVIEW.reviewedBy} on {RULESET_REVIEW.reviewedOn}. {RULESET_REVIEW.clinicalValidation}</Notice>
-          </div>
+        <div className="flex min-w-0 flex-col gap-3">
+          <Notice className="mb-3" tone="info" icon={<Shield aria-hidden />} title="Saudi rules">
+            <p>CareBite is used in Saudi Arabia, so every food and health rule is based on Saudi government guidance: the Ministry of Health, the Saudi National Diabetes Center, the Saudi Food &amp; Drug Authority, the Ministry of Environment, Water and Agriculture and the General Food Security Authority.</p>
+            <p className="mt-2"><b>Governance:</b> reviewed by {RULESET_REVIEW.reviewedBy} on {RULESET_REVIEW.reviewedOn}. {RULESET_REVIEW.clinicalValidation}</p>
+          </Notice>
 
-          <Section id="categories" title="Documented hospital diet categories">
+          <Section id="categories" title="Documented hospital diet categories" summary={`${active.length} active categories, each with how completely CareBite can screen it.`}>
             <p>A diet order combines one or more categories. Plain names are used on screens; the short code appears on schedules and tray tickets (tap a code anywhere to see its meaning). Each category says how completely CareBite can screen it, so cases that need professional review are visible.</p>
             <h3 className="text-[1.1rem]">How each active category is supported</h3>
             <dl className="grid gap-3 md:grid-cols-2">
@@ -128,22 +124,22 @@ export default function DietsPage() {
             <ul className="flex list-disc flex-col gap-1.5 pl-5">{retired.map((d: any) => <li key={d.id}><b className="text-heading">{d.plain} ({d.code}):</b> {d.retiredReason}</li>)}</ul>
           </Section>
 
-          <Section id="medical" title="Nutrient rules">
+          <Section id="medical" title="Nutrient rules" summary={`${MEDICAL_RULES.length} nutrient limits and ranking rules, checked for each portion.`}>
             <p>Limits are checked for each permitted portion using SFDA Saudi Food Composition Table dish values; ranking rules only change the order of eligible meals. Hospital dishes prepared to an SFDA Saudi Food Composition Tables recipe ({SFCT_META.dishes} dishes in the first edition) are screened automatically; meals with any dish outside the SFCT go to admin review for these limits.</p>
             <ul className="flex flex-col gap-3">{MEDICAL_RULES.map((r: any) => <RuleCard key={r.id} r={r} />)}</ul>
           </Section>
 
-          <Section id="safety" title="Safety and review rules">
+          <Section id="safety" title="Safety and review rules" summary={`${SAFETY_RULES.length} rules that exclude a meal, send it to review, instruct the kitchen or flag it.`}>
             <ul className="flex flex-col gap-3">{SAFETY_RULES.map((r: any) => <RuleCard key={r.id} r={{ ...r, kind: undefined }} outcome={r.outcome} />)}</ul>
           </Section>
 
-          <Section id="intake" title="Intake flags">
+          <Section id="intake" title="Intake flags" summary="Prompts for a professional review, raised from recorded meals.">
             <p>Prompts for a professional review, raised from recorded meals. They never change a diet order or screening result.</p>
             <ul className="flex list-disc flex-col gap-1.5 pl-5">{INTAKE_FLAG_RULES.map((r: any) => <li key={r.id}><b className="text-heading">{r.title} ({r.id}):</b> {r.logic}</li>)}</ul>
             <SourceLinks ids={['CAREBITE-FLAGS']} />
           </Section>
 
-          <Section id="allocation" title="Daily limits per meal">
+          <Section id="allocation" title="Daily limits per meal" summary={PERIODS.map((p: { id: string; label: string }) => `${p.label} ${Math.round((MEAL_SHARE as Record<string, number>)[p.id] * 100)}%`).join(' · ')}>
             <p>To screen a single meal against a daily limit, the limit is shared across the day:</p>
             <dl className="grid grid-cols-2 gap-2 sm:grid-cols-4">
               {PERIODS.map((p: { id: string; label: string }) => (
@@ -156,7 +152,7 @@ export default function DietsPage() {
             <p className="text-sm text-muted-foreground">{(SOURCES as any)['CAREBITE-ALLOC'].summary} This is a prototype assumption; a hospital would set its own distribution.</p>
           </Section>
 
-          <Section id="allergens" title="The 14 SFDA allergens">
+          <Section id="allergens" title="The 14 SFDA allergens" summary="The allergens food services must declare, used for every allergy record and meal label.">
             <p>{(SOURCES as any)['SFDA-ALLERGENS'].summary}</p>
             <ul className="grid grid-cols-1 gap-2 min-[420px]:grid-cols-2 md:grid-cols-3">
               {ALLERGENS.map((a: { id: string; label: string; hint?: string }) => (
@@ -170,13 +166,13 @@ export default function DietsPage() {
             <SourceLinks ids={['SFDA-ALLERGENS']} />
           </Section>
 
-          <Section id="texture" title="Texture-modified diets (IDDSI)">
+          <Section id="texture" title="Texture-modified diets (IDDSI)" summary="The care team sets the level; these meals always need admin review.">
             <p>The care team sets the texture level. Menu items do not have a recorded IDDSI level, so every meal for a texture-modified diet needs admin review and preparation by the kitchen at that level.</p>
             <ul className="flex list-disc flex-col gap-1 pl-5">{TEXTURE_LEVELS.map((t: { id: string; label: string }) => <li key={t.id}>{t.label}</li>)}</ul>
             <SourceLinks ids={['IDDSI']} />
           </Section>
 
-          <Section id="local" title="Local produce (MEWA)">
+          <Section id="local" title="Local produce (MEWA)" summary="National self-sufficiency by food group, marked on menus and the kitchen summary.">
             <p>{(SOURCES as any)['MEWA-LOCAL'].summary} CareBite marks ingredients from these groups on the menu and the kitchen summary.</p>
             <Table caption="National self-sufficiency by food group" className="sm:w-auto">
               <thead><tr><Th scope="col">Group</Th><Th scope="col" className="text-right">Self-sufficiency</Th><Th scope="col" className="text-right">Year</Th></tr></thead>
@@ -186,7 +182,7 @@ export default function DietsPage() {
             <ul className="flex flex-col gap-1 text-sm">{LOCAL_PRODUCTION_SOURCES.map((s: { url: string; publisher: string }) => <li key={s.url}><ExtLink href={s.url}>{s.publisher}</ExtLink></li>)}</ul>
           </Section>
 
-          <Section id="waste" title="Food security and food waste (GFSA)">
+          <Section id="waste" title="Food security and food waste (GFSA)" summary="Leftovers and weighed plate waste are recorded for every meal.">
             <p>{(SOURCES as any).GFSA.summary}</p>
             <p>{(SOURCES as any)['GFSA-WASTE'].summary}</p>
             <p className="text-sm">In CareBite, estimated leftovers (how much was eaten, as estimated by staff or reported by the patient) and weighed plate waste are recorded separately for every meal, and the nutrition team dashboard shows both as indicators. Meals ranked by preference and portions matched to appetite are intended to reduce avoidable hospital food waste; the prototype does not measure that effect.</p>
@@ -198,7 +194,7 @@ export default function DietsPage() {
             </ul>
           </Section>
 
-          <Section id="sources" title="Sources and limitations">
+          <Section id="sources" title="Sources and limitations" summary="Every source and the project’s limitations, on one page.">
             <p>Every source behind these rules, the SFDA food composition data and the project’s limitations are listed on <Link href="/sources">Data sources &amp; limitations</Link>.</p>
           </Section>
         </div>

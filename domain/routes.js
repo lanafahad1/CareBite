@@ -8,7 +8,7 @@ export function createApiRoutes(service) {
   const r = (method, path, handler, opts = {}) => ({ method, path, handler, ...opts });
   return [
     r('GET', '/api/reference', () => service.getReference(), { public: true }),
-    r('GET', '/api/menu', ({ query }) => service.getMenu({ date: query.date || undefined, period: query.period || null, q: query.q ?? '', diet: query.diet || null, type: query.type || null }), { public: true }),
+    r('GET', '/api/menu', ({ query }) => service.getMenu({ view: query.view === 'all' ? 'all' : 'date', date: query.date || undefined, period: query.period || null, q: query.q ?? '', diet: query.diet || null, type: query.type || null }), { public: true }),
     r('GET', '/api/meals/:id', ({ params, query, user }) => service.getMealDetail(user, params.id, { patientId: query.patient || null, date: query.date || undefined, period: query.period || null }), { public: true }),
 
     r('GET', '/api/dashboard', ({ user, query }) => service.getDashboard(user, { date: query.date || undefined })),

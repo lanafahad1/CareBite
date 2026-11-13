@@ -25,22 +25,40 @@ export function createMenuAdmin(ctx, workflow) {
   const { repo, today, stamp, deny, invalid, conflict, requirePermission, catalog, menu, reloadCatalog, compatibilityFor, accessPatient, getMealOr404, assertPeriod, assertDate, audit, forScreening, outcomesOf, brief, sfct } = ctx;
 
   // ------------------------------------------------------------ public menu
-  function getMenu({ date = today(), period = null, q = '', diet = null, type = null } = {}) {
+  /**
+   * The public menu. view 'date' (default): that date's cycle menu by period.
+   * view 'all': every meal in the catalogue, grouped by the period it is usually served at.
+   */
+  function getMenu({ date = today(), period = null, q = '', diet = null, type = null, view = 'date' } = {}) {
     assertDate(date);
     if (period) assertPeriod(period);
-    const day = menuDay(menu(), date);
     const term = clean(q, 60).toLowerCase();
     const cat = catalog();
     const matches = (meal) => !term || [meal.name, meal.description, meal.cuisine, ...meal.components.map((c) => c.name), ...meal.ingredients.map((l) => l.ingredient.name)].some((s) => s?.toLowerCase().includes(term));
     const dietOk = (mealId) => !diet || ['eligible', 'depends'].includes(compatibilityFor(mealId).find((c) => c.id === diet)?.status ?? '');
     const typeOk = (meal) => !type || meal.type === type;
+    const keep = (m) => m && matches(m) && dietOk(m.id) && typeOk(m);
+    const summary = (m) => ({ ...mealSummary(m), compatibility: compatibilityFor(m.id) });
+    const nutritionNote = 'Nutrition comes only from SFDA Saudi Food Composition Table laboratory values, for dishes the kitchen prepares to the SFCT standard recipe. Other dishes show no values: nothing is estimated.';
+    if (view === 'all') {
+      const list = cat.list.filter(keep);
+      return {
+        view: 'all', date, total: list.length,
+        periods: PERIOD_IDS.filter((p) => !period || p === period).map((p) => ({
+          id: p, label: label(PERIODS, p), dateSpecific: false,
+          meals: list.filter((m) => m.category === p).map(summary),
+        })),
+        nutritionNote,
+      };
+    }
+    const day = menuDay(menu(), date);
     return {
-      date, weekday: day.weekday, cycleDay: day.cycleDay,
+      view: 'date', date, weekday: day.weekday, cycleDay: day.cycleDay,
       periods: day.periods.filter((p) => !period || p.id === period).map((p) => ({
         id: p.id, label: p.label, dateSpecific: p.dateSpecific,
-        meals: p.mealIds.map((id) => cat.byId[id]).filter((m) => m && matches(m) && dietOk(m.id) && typeOk(m)).map((m) => ({ ...mealSummary(m), compatibility: compatibilityFor(m.id) })),
+        meals: p.mealIds.map((id) => cat.byId[id]).filter(keep).map(summary),
       })),
-      nutritionNote: 'Nutrition comes only from SFDA Saudi Food Composition Table laboratory values, for dishes the kitchen prepares to the SFCT standard recipe. Other dishes show no values: nothing is estimated.',
+      nutritionNote,
     };
   }
 
